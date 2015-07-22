@@ -81,7 +81,7 @@ LuaGenkiVS = sgs.CreateViewAsSkill{
 	end
 }
 
-Genki = sgs.CreateTriggerSkill {
+Genki = sgs.CreateTriggerSkill{
 	name = "LuaGenki",
 	events = {sgs.HpRecover},
 	view_as_skill = LuaGenkiVS,

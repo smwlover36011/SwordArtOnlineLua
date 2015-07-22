@@ -87,7 +87,7 @@ Genki = sgs.CreateTriggerSkill {
 	view_as_skill = LuaGenkiVS,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		room:askForUseCard(player, "@@LuaGenki", "@LuaGenki")
+		room:askForUseCard(player, "@@LuaGenki", "@LuaGenki:::"..player:getHp())
 		return false
 	end
 }
@@ -108,8 +108,8 @@ sgs.LoadTranslationTable{
 	["LuaGenki"]="元气",
 	[":LuaGenki"]="<b>（元气偶像）</b>每当你回复体力后，你可以令至多X名角色各摸一张牌（X为你的体力值）。",
 	["luagenki"]="元气偶像",
-	["@LuaGenki"]="你可以发动技能“元气偶像”",
-	["~LuaGenki"]="选择合理数量的角色→点击“确定”"
+	["@LuaGenki"]="你可以对至多 %arg 名角色发动技能“元气偶像”",
+	["~LuaGenki"]="选择目标角色→点击“确定”",
 	
-	["~Silica"]="",
+	["~Silica"]=""
 }

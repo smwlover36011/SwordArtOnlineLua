@@ -197,7 +197,7 @@ Mamori = sgs.CreateTriggerSkill{
 GenkiCard = sgs.CreateSkillCard{
 	name = "LuaGenki",
 	filter = function(self, targets, to_select, player)
-		return #targets < sgs.Self:getHp()
+		return #targets < player:getHp()
 	end,
 	feasible = function(self, targets)
 		return #targets > 0 and #targets <= sgs.Self:getHp()
@@ -253,4 +253,157 @@ sgs.LoadTranslationTable{
 	["~LuaGenki"]="选择目标角色→点击“确定”",
 	
 	["~Silica"]=""
+}
+
+--SAO-105 Sachi
+Sachi = sgs.General(extension,"Sachi","sao","3",false)
+
+--Mayou
+Mayou = sgs.CreateTriggerSkill{
+	name = "LuaMayou",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.TargetConfirmed},
+	on_trigger = function(self, event, sachi, data)
+		local room = sachi:getRoom()
+		local use = data:toCardUse()
+		local card = use.card
+		if sachi:objectName() == use.from:objectName() then
+			if card:isKindOf("Slash") then
+				--sendLog:
+				local log = sgs.LogMessage()
+				log.type = "#MayouDiscard"
+				log.from = sachi
+				log.arg = 1
+				room:sendLog(log)
+				
+				if not room:askForCard(sachi, ".", "@LuaMayou:::"..1, data, self:objectName()) then
+					local nullified_list = use.nullified_list
+					for _, p in sgs.qlist(use.to) do
+						table.insert(nullified_list, p:objectName())
+					end
+					use.nullified_list = nullified_list
+					data:setValue(use)
+				end
+			end
+		end
+	end
+}
+
+--Negai
+Negai = sgs.CreateTriggerSkill{
+	name = "LuaNegai",
+	events = {sgs.EventPhaseChanging},
+	on_trigger = function(self, event, sachi, data)
+		local change = data:toPhaseChange()
+		if change.to == sgs.Player_Discard then
+			if sachi:isKongcheng() then
+				return false
+			end
+			local cards = sachi:getHandcards()
+			local num = 0
+			for _, card in sgs.qlist(cards) do
+				if card:isKindOf("Slash") then
+					num = num + 1
+				end
+			end
+			if num == 0 and sachi:askForSkillInvoke(self:objectName()) then
+				local room = sachi:getRoom()
+				room:showAllCards(sachi)
+				sachi:skip(sgs.Player_Discard)
+			end
+		end
+		return false
+	end
+}
+
+--Takushi
+TakushiCard = sgs.CreateSkillCard{
+	name = "LuaTakushi",
+	target_fixed = false,
+	filter = function(self, targets, to_select)
+		return #targets == 0 and to_select:isMale() and to_select:objectName() ~= self:objectName()
+	end,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source, "LuaTakushi")
+		room:broadcastSkillInvoke("LuaTakushi")
+		room:doLightbox("Takushi$", 2500)
+	
+		source:loseMark("@takushi")
+		targets[1]:gainMark("@takushi_target")
+	end
+}
+
+LuaTakushiVS = sgs.CreateViewAsSkill{
+	name = "LuaTakushi",
+	n = 0,
+	view_as = function(self, cards)
+		local card = TakushiCard:clone()
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("@takushi") >= 1
+	end
+}
+
+Takushi = sgs.CreateTriggerSkill{
+	name = "LuaTakushi" ,
+	frequency = sgs.Skill_Limited,
+	limit_mark = "@takushi",
+	events = {},
+	view_as_skill = LuaTakushiVS ,
+	on_trigger = function()
+		return false
+	end
+}
+
+TakushiDraw = sgs.CreateTriggerSkill{
+	name = "#LuaTakushiDraw",
+	events = {sgs.CardUsed} ,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		if use.card:isKindOf("Slash") then
+			local sachi = room:findPlayerBySkillName(self:objectName())
+			if (not sachi) or (not sachi:isAlive()) then
+				return false
+			end
+			room:notifySkillInvoked(sachi, "LuaTakushi")
+			room:broadcastSkillInvoke("LuaTakushi")
+			sachi:drawCards(1, "LuaTakushi")
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive() and target:getMark("@takushi_target") >= 1
+	end
+}
+
+Sachi:addSkill(Mayou)
+Sachi:addSkill(Negai)
+Sachi:addSkill(Takushi)
+Sachi:addSkill(TakushiDraw)
+extension:insertRelatedSkills("LuaTakushi","#LuaTakushiDraw")
+
+sgs.LoadTranslationTable{	
+	["Sachi"]="幸",
+	["&Sachi"]="幸",
+	["#Sachi"]="逝去的温柔",
+	["designer:Sachi"]="Smwlover",
+	["cv:Sachi"]="早见沙织",
+	["illustrator:Sachi"]="",
+	
+	["LuaMayou"]="徘徊",
+	[":LuaMayou"]="<b>（徘徊歧路）</b><font color=\"blue\"><b>锁定技，</b></font>每当你使用【杀】指定目标后，你须弃置一张手牌，否则此【杀】对目标角色无效。",
+	["@LuaMayou"]="“徘徊歧路”被触发，你需要弃置 1 张手牌",
+	["#MayouDiscard"]="%from 需要弃置 %arg 张手牌",
+	["LuaNegai"]="祈愿",
+	[":LuaNegai"]="<b>（美丽的祈愿）</b>弃牌阶段开始前，若你的手牌中没有【杀】，你可以展示所有手牌（至少一张），然后跳过本回合的弃牌阶段。",
+	["LuaTakushi"]="寄托",
+	[":LuaTakushi"]="<b>（心灵寄托）</b><font color=\"red\"><b>限定技，</b></font>出牌阶段，你可以选择一名男性角色。直到游戏结束，每当该角色使用【杀】时，你可以摸一张牌。",
+	["@takushi"]="寄托",
+	["@takushi_target"]="寄托目标",
+	["luatakushi"]="心灵寄托",
+	["Takushi$"]="image=image/animate/takushi.png",
+	
+	["~Sachi"]=""
 }

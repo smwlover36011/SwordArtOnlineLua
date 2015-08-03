@@ -271,7 +271,7 @@ Mayou = sgs.CreateTriggerSkill{
 			if card:isKindOf("Slash") then
 				--sendLog:
 				local log = sgs.LogMessage()
-				log.type = "#SkillTriggered"
+				log.type = "#TriggerSkill"
 				log.from = sachi
 				log.arg = self:objectName()
 				room:sendLog(log)
@@ -370,7 +370,7 @@ TakushiDraw = sgs.CreateTriggerSkill{
 			
 			--sendLog:
 			local log = sgs.LogMessage()
-			log.type = "#SkillTriggered"
+			log.type = "#TriggerSkill"
 			log.from = player
 			log.arg = "LuaTakushi"
 			room:sendLog(log)
@@ -410,7 +410,6 @@ sgs.LoadTranslationTable{
 	["@takushi_target"]="寄托目标",
 	["luatakushi"]="心灵寄托",
 	["Takushi$"]="image=image/animate/takushi.png",
-	["#SkillTriggered"]="%from 的技能 %arg 被触发",
 	
 	["~Sachi"]=""
 }

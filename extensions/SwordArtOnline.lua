@@ -271,9 +271,9 @@ Mayou = sgs.CreateTriggerSkill{
 			if card:isKindOf("Slash") then
 				--sendLog:
 				local log = sgs.LogMessage()
-				log.type = "#MayouDiscard"
+				log.type = "#SkillTriggered"
 				log.from = sachi
-				log.arg = 1
+				log.arg = self:objectName()
 				room:sendLog(log)
 				
 				if not room:askForCard(sachi, ".", "@LuaMayou:::"..1, data, self:objectName()) then
@@ -367,6 +367,13 @@ TakushiDraw = sgs.CreateTriggerSkill{
 			if (not sachi) or (not sachi:isAlive()) then
 				return false
 			end
+			
+			--sendLog:
+			local log = sgs.LogMessage()
+			log.type = "#SkillTriggered"
+			log.from = player
+			log.arg = "LuaTakushi"
+			room:sendLog(log)
 			room:notifySkillInvoked(sachi, "LuaTakushi")
 			room:broadcastSkillInvoke("LuaTakushi")
 			sachi:drawCards(1, "LuaTakushi")
@@ -394,8 +401,7 @@ sgs.LoadTranslationTable{
 	
 	["LuaMayou"]="徘徊",
 	[":LuaMayou"]="<b>（徘徊歧路）</b><font color=\"blue\"><b>锁定技，</b></font>每当你使用【杀】指定目标后，你须弃置一张手牌，否则此【杀】对目标角色无效。",
-	["@LuaMayou"]="“徘徊歧路”被触发，你需要弃置 1 张手牌",
-	["#MayouDiscard"]="%from 需要弃置 %arg 张手牌",
+	["@LuaMayou"]="你需要弃置 %arg 张手牌",
 	["LuaNegai"]="祈愿",
 	[":LuaNegai"]="<b>（美丽的祈愿）</b>弃牌阶段开始前，若你的手牌中没有【杀】，你可以展示所有手牌（至少一张），然后跳过本回合的弃牌阶段。",
 	["LuaTakushi"]="寄托",
@@ -404,6 +410,7 @@ sgs.LoadTranslationTable{
 	["@takushi_target"]="寄托目标",
 	["luatakushi"]="心灵寄托",
 	["Takushi$"]="image=image/animate/takushi.png",
+	["#SkillTriggered"]="%from 的技能 %arg 被触发",
 	
 	["~Sachi"]=""
 }

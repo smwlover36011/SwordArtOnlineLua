@@ -5,7 +5,7 @@ extension=sgs.Package("swordartonline")
 
 --增加SAO势力
 do
-    require  "lua.config" 
+    require "lua.config" 
 	local config = config
 	local kingdoms = config.kingdoms
 	table.insert(kingdoms,"sao")
@@ -371,7 +371,7 @@ TakushiDraw = sgs.CreateTriggerSkill{
 			--sendLog:
 			local log = sgs.LogMessage()
 			log.type = "#TriggerSkill"
-			log.from = player
+			log.from = sachi
 			log.arg = "LuaTakushi"
 			room:sendLog(log)
 			room:notifySkillInvoked(sachi, "LuaTakushi")
@@ -397,7 +397,7 @@ sgs.LoadTranslationTable{
 	["#Sachi"]="逝去的温柔",
 	["designer:Sachi"]="Smwlover",
 	["cv:Sachi"]="早见沙织",
-	["illustrator:Sachi"]="",
+	["illustrator:Sachi"]="Pixiv=46959959",
 	
 	["LuaMayou"]="徘徊",
 	[":LuaMayou"]="<b>（徘徊歧路）</b><font color=\"blue\"><b>锁定技，</b></font>每当你使用【杀】指定目标后，你须弃置一张手牌，否则此【杀】对目标角色无效。",
@@ -409,7 +409,7 @@ sgs.LoadTranslationTable{
 	["@takushi"]="寄托",
 	["@takushi_target"]="寄托目标",
 	["luatakushi"]="心灵寄托",
-	["Takushi$"]="image=image/animate/takushi.png",
+	["Takushi$"]="image=image/animate/Sachi.png",
 	
-	["~Sachi"]=""
+	["~Sachi"]="谢谢你，再见……"
 }

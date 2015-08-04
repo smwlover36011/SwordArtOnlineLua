@@ -164,9 +164,6 @@ Mamori = sgs.CreateTriggerSkill{
 	name = "LuaMamori",
 	events = {sgs.EventPhaseStart},
 	frequency = sgs.Skill_Frequent,
-	can_trigger = function(self, target)
-		return target ~= nil
-	end,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if player:getPhase() ~= sgs.Player_Start then
@@ -190,6 +187,9 @@ Mamori = sgs.CreateTriggerSkill{
 			end
 		end
 		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
 	end
 }
 
@@ -413,3 +413,119 @@ sgs.LoadTranslationTable{
 	
 	["~Sachi"]="谢谢你，再见……"
 }
+
+--SAO-109 Agil
+Agil = sgs.General(extension,"Agil","sao","4",true)
+
+--Boueki
+BouekiCard = sgs.CreateSkillCard{
+	name = "LuaBoueki",
+	will_throw = false,
+	handling_method = sgs.Card_MethodNone,
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source,"LuaBoueki")
+		room:broadcastSkillInvoke("LuaBoueki")
+		room:showCard(source, self:getEffectiveId()) --showCard
+		
+		local card = self:getSubcards():first()
+		local num = sgs.Sanguosha:getCard(card):getNumber()
+		room:setPlayerFlag(targets[1], "BouekiInvoked")
+		room:setPlayerProperty(targets[1], "BouekiShowedCard", sgs.QVariant(sgs.Sanguosha:getCard(card):toString()))
+	end
+}
+
+BouekiGiveCard = sgs.CreateSkillCard{
+	name = "LuaBouekiGive",
+	will_throw = false,
+	target_fixed = true,
+	handling_method = sgs.Card_MethodNone,
+	on_use = function(self, room, source, targets)
+	end
+}
+
+LuaBouekiVS = sgs.CreateViewAsSkill{
+	name = "LuaBoueki",
+	n = 999,
+	view_filter = function(self, selected, to_select)
+		local player = sgs.Self
+		if player:hasFlag("BouekiInvoker") then
+			if #selected == 0 then
+				return to_select:isRed() and not to_select:isEquipped()
+			end
+		elseif player:hasFlag("BouekiInvoked") then
+			return not to_select:isEquipped()
+		end
+		return false
+	end,
+	view_as = function(self, cards)
+		local player = sgs.Self
+		if player:hasFlag("BouekiInvoker") and #cards == 1 then
+			local card = BouekiCard:clone()
+			card:addSubcard(cards[1])
+			return card
+		elseif player:hasFlag("BouekiInvoked") then
+			local card = sgs.Card_Parse(player:property("BouekiShowedCard"):toString())
+			local num = card:getNumber()
+			local total = 0
+			for _, c in ipairs(cards) do
+				total = total + c:getNumber()
+			end
+			if total >= num or #cards == player:getHandcardNum() then
+				local card = BouekiGiveCard:clone()
+				for _, c in ipairs(cards) do
+					card:addSubcard(c)
+				end
+				return card
+			end
+		end
+		return nil
+	end,
+	enabled_at_play = function(self, player)
+		return false
+	end,
+	enabled_at_response = function(self, player, pattern)
+		return pattern == "@@LuaBoueki!" or pattern == "@@LuaBoueki" --"!" means not optional.
+	end
+}
+
+Boueki = sgs.CreateTriggerSkill{
+	name = "LuaBoueki",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseStart},
+	view_as_skill = LuaBouekiVS,
+	on_trigger = function(self, event, agil, data)
+		if agil:hasSkill(self:objectName()) and agil:getPhase() == sgs.Player_Play then
+			local room = agil:getRoom()
+			room:setPlayerFlag(agil, "BouekiInvoker")
+			room:askForUseCard(agil, "@@LuaBoueki", "@LuaBouekiInvoker")
+			room:setPlayerFlag(agil, "-BouekiInvoker")
+			--Find the invoked player:
+			local target = nil
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:hasFlag("BouekiInvoked") then
+					target = p
+					break
+				end
+			end
+			if not target or not target:isAlive() then
+				return false
+			end
+			local used = room:askForUseCard(target, "@@LuaBoueki!", "@LuaBouekiInvoked", -1, sgs.Card_MethodNone)
+			if not used then
+			end
+			room:setPlayerFlag(target, "-BouekiInvoked")
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+Agil:addSkill(Boueki)

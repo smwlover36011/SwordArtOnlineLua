@@ -28,7 +28,7 @@ Ondo = sgs.CreateMasochismSkill{
 			if target:askForSkillInvoke(self:objectName(), sgs.QVariant("draw:"..source:objectName())) then
 				local room = target:getRoom()
 				room:showAllCards(source)
-				local cards = source:getHandcards()
+				local cards = source:getHandcards() --getHandCards() returns QList<Card*> while handCards() returns QList<int> where "int" is cardId.
 				local num = 0
 				for _, card in sgs.qlist(cards) do
 					if card:isRed() then
@@ -170,7 +170,7 @@ Mamori = sgs.CreateTriggerSkill{
 			return false
 		end
 		local silica = room:findPlayerBySkillName(self:objectName())
-		if not silica then
+		if not silica or not silica:isAlive() then
 			return false
 		end
 		if silica:isWounded() then
@@ -364,7 +364,7 @@ TakushiDraw = sgs.CreateTriggerSkill{
 		local use = data:toCardUse()
 		if use.card:isKindOf("Slash") then
 			local sachi = room:findPlayerBySkillName(self:objectName())
-			if (not sachi) or (not sachi:isAlive()) then
+			if not sachi or not sachi:isAlive() then
 				return false
 			end
 			
@@ -419,11 +419,11 @@ Agil = sgs.General(extension,"Agil","sao","4",true)
 
 --Boueki
 BouekiCard = sgs.CreateSkillCard{
-	name = "LuaBoueki",
+	name = "BouekiCard",
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
 	filter = function(self, targets, to_select, player)
-		return #targets == 0 and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
+		return #targets == 0 and to_select:getHandcardNum() >= player:getHandcardNum() and to_select:objectName() ~= player:objectName()
 	end,
 	feasible = function(self, targets)
 		return #targets == 1
@@ -432,20 +432,40 @@ BouekiCard = sgs.CreateSkillCard{
 		room:notifySkillInvoked(source,"LuaBoueki")
 		room:broadcastSkillInvoke("LuaBoueki")
 		room:showCard(source, self:getEffectiveId()) --showCard
-		
-		local card = self:getSubcards():first()
-		local num = sgs.Sanguosha:getCard(card):getNumber()
-		room:setPlayerFlag(targets[1], "BouekiInvoked")
-		room:setPlayerProperty(targets[1], "BouekiShowedCard", sgs.QVariant(sgs.Sanguosha:getCard(card):toString()))
 	end
 }
 
 BouekiGiveCard = sgs.CreateSkillCard{
-	name = "LuaBouekiGive",
+	name = "BouekiGiveCard",
 	will_throw = false,
 	target_fixed = true,
 	handling_method = sgs.Card_MethodNone,
 	on_use = function(self, room, source, targets)
+		--Find Agil:
+		local agil = nil
+		local card = sgs.Card_Parse(source:property("BouekiShowedCard"):toString())
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if p:hasFlag("BouekiInvoker") then
+				agil = p
+				break
+			end
+		end
+		--Exchange:
+		if agil and agil:isAlive() and card then
+			local a = agil
+			local b = source
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:objectName() ~= a:objectName() and p:objectName() ~= b:objectName() then
+					room:doNotify(p, sgs.CommandType.S_COMMAND_EXCHANGE_KNOWN_CARDS, json.encode({a:objectName(), b:objectName()}))
+				end
+			end
+			local exchangeMove = sgs.CardsMoveList()
+			local move1 = sgs.CardsMoveStruct(card:getId(), b, sgs.Player_PlaceHand, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_SWAP, a:objectName(), b:objectName(), "LuaBoueki", ""))
+			local move2 = sgs.CardsMoveStruct(self:getSubcards(), a, sgs.Player_PlaceHand, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_SWAP, b:objectName(), a:objectName(), "LuaBoueki", ""))
+			exchangeMove:append(move1)
+			exchangeMove:append(move2)
+			room:moveCardsAtomic(exchangeMove, false);
+		end
 	end
 }
 
@@ -454,22 +474,15 @@ LuaBouekiVS = sgs.CreateViewAsSkill{
 	n = 999,
 	view_filter = function(self, selected, to_select)
 		local player = sgs.Self
-		if player:hasFlag("BouekiInvoker") then
-			if #selected == 0 then
-				return to_select:isRed() and not to_select:isEquipped()
-			end
-		elseif player:hasFlag("BouekiInvoked") then
+		if player:hasFlag("BouekiInvoked") then
 			return not to_select:isEquipped()
+		else
+			return #selected == 0 and to_select:isRed() and not to_select:isEquipped()
 		end
-		return false
 	end,
 	view_as = function(self, cards)
 		local player = sgs.Self
-		if player:hasFlag("BouekiInvoker") and #cards == 1 then
-			local card = BouekiCard:clone()
-			card:addSubcard(cards[1])
-			return card
-		elseif player:hasFlag("BouekiInvoked") then
+		if player:hasFlag("BouekiInvoked") then
 			local card = sgs.Card_Parse(player:property("BouekiShowedCard"):toString())
 			local num = card:getNumber()
 			local total = 0
@@ -483,44 +496,85 @@ LuaBouekiVS = sgs.CreateViewAsSkill{
 				end
 				return card
 			end
+		else
+			if #cards == 1 then
+				local card = BouekiCard:clone()
+				card:addSubcard(cards[1]) --The SkillName of the card is "boueki"
+				return card
+			end
 		end
 		return nil
 	end,
 	enabled_at_play = function(self, player)
-		return false
+		return not player:hasUsed("#BouekiCard")
 	end,
 	enabled_at_response = function(self, player, pattern)
-		return pattern == "@@LuaBoueki!" or pattern == "@@LuaBoueki" --"!" means not optional.
+		return pattern == "@@LuaBoueki!"  
 	end
 }
 
 Boueki = sgs.CreateTriggerSkill{
 	name = "LuaBoueki",
 	frequency = sgs.Skill_NotFrequent,
-	events = {sgs.EventPhaseStart},
+	events = {sgs.CardFinished},
 	view_as_skill = LuaBouekiVS,
 	on_trigger = function(self, event, agil, data)
-		if agil:hasSkill(self:objectName()) and agil:getPhase() == sgs.Player_Play then
-			local room = agil:getRoom()
-			room:setPlayerFlag(agil, "BouekiInvoker")
-			room:askForUseCard(agil, "@@LuaBoueki", "@LuaBouekiInvoker")
-			room:setPlayerFlag(agil, "-BouekiInvoker")
-			--Find the invoked player:
-			local target = nil
-			for _, p in sgs.qlist(room:getAlivePlayers()) do
-				if p:hasFlag("BouekiInvoked") then
-					target = p
+		local room = agil:getRoom()
+		local use = data:toCardUse()
+		local source = use.from
+		local target = use.to:first()
+		local card = use.card
+		if not agil:hasSkill(self:objectName()) then
+			return false
+		end
+		if agil:objectName() ~= source:objectName() then
+			return false
+		end
+		if card:getSkillName() ~= "boueki" then
+			return false
+		end
+		if not target or not target:isAlive() then
+			return false
+		end
+		local card = use.card:getSubcards():first()
+		local trueCard = sgs.Sanguosha:getCard(card)
+		local num = trueCard:getNumber()
+		room:setPlayerFlag(source, "BouekiInvoker")
+		room:setPlayerFlag(target, "BouekiInvoked")
+		room:setPlayerProperty(target, "BouekiShowedCard", sgs.QVariant(trueCard:toString()))
+		local used = room:askForUseCard(target, "@@LuaBoueki!", "@LuaBoueki:::"..num, -1, sgs.Card_MethodNone) --"!" means forced.
+		if not used then
+			--If AI didn't choose any card:
+			--First, sort the player's handcards.
+			local handcards = target:getHandcards()
+			for i = handcards:length()-1, 1, -1 do
+				for j = 0, i-1, 1 do
+					if handcards:at(j):getNumber() < handcards:at(j+1):getNumber() then
+						handcards:swap(j, j+1)
+					end
+				end
+			end
+			--Then, choose cards in descending order.
+			local index = 0
+			local sum = 0
+			for i = 0, handcards:length(), 1 do
+				sum = sum + handcards:at(i):getNumber()
+				index = index + 1
+				if sum >= num then
 					break
 				end
 			end
-			if not target or not target:isAlive() then
-				return false
+			local toGive = handcards:mid(0, index)
+			local giveCard = BouekiGiveCard:clone()
+			for _, c in sgs.qlist(toGive) do
+				giveCard:addSubcard(c:getId())
 			end
-			local used = room:askForUseCard(target, "@@LuaBoueki!", "@LuaBouekiInvoked", -1, sgs.Card_MethodNone)
-			if not used then
-			end
-			room:setPlayerFlag(target, "-BouekiInvoked")
+			local useTargets = {}
+			giveCard:on_use(room, target, useTargets)
 		end
+		room:setPlayerFlag(source, "-BouekiInvoker")
+		room:setPlayerFlag(target, "-BouekiInvoked")
+		room:setPlayerProperty(target, "BouekiShowedCard", sgs.QVariant(""))
 		return false
 	end,
 	can_trigger = function(self, target)
@@ -529,3 +583,21 @@ Boueki = sgs.CreateTriggerSkill{
 }
 
 Agil:addSkill(Boueki)
+
+sgs.LoadTranslationTable{	
+	["Agil"]="艾基尔",
+	["&Agil"]="艾基尔",
+	["#Agil"]="道具商人",
+	["designer:Agil"]="Smwlover",
+	["cv:Agil"]="安元洋贵",
+	["illustrator:Agil"]="",
+	
+	["LuaBoueki"]="精明",
+	[":LuaBoueki"]="<b>（精明的商人）</b><font color=\"green\"><b>阶段技，</b></font>你可以展示一张红色手牌并选择一名手牌数不小于你的其他角色，令该角色选择任意数量的点数之和不小于X的手牌（不足则全部选择，X为你展示的牌的点数），然后将这些手牌与你展示的牌交换。",
+	["boueki"]="精明的商人",
+	["@LuaBoueki"]="请选择任意数量的点数之和不小于 %arg 的手牌，或者你的全部手牌",
+	["~LuaBoueki"]="选择手牌→点击“确定”",
+	["bouekigive"]="付款",
+	
+	["~Agil"]=""
+}

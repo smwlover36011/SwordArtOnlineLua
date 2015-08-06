@@ -320,8 +320,8 @@ Negai = sgs.CreateTriggerSkill{
 TakushiCard = sgs.CreateSkillCard{
 	name = "LuaTakushi",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:isMale() and to_select:objectName() ~= self:objectName()
+	filter = function(self, targets, to_select, sachi)
+		return #targets == 0 and to_select:isMale() and to_select:objectName() ~= sachi:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		room:notifySkillInvoked(source, "LuaTakushi")
@@ -591,7 +591,7 @@ sgs.LoadTranslationTable{
 	["#Agil"]="道具商人",
 	["designer:Agil"]="Smwlover",
 	["cv:Agil"]="安元洋贵",
-	["illustrator:Agil"]="",
+	["illustrator:Agil"]="官方",
 	
 	["LuaBoueki"]="精明",
 	[":LuaBoueki"]="<b>（精明的商人）</b><font color=\"green\"><b>阶段技，</b></font>你可以展示一张红色手牌并选择一名手牌数不小于你的其他角色，令该角色选择任意数量的点数之和不小于X的手牌（不足则全部选择，X为你展示的牌的点数），然后将这些牌与你展示的牌交换。",
@@ -708,7 +708,7 @@ sgs.LoadTranslationTable{
 	["#Kuradeel"]="深仇大恨",
 	["designer:Kuradeel"]="Smwlover",
 	["cv:Kuradeel"]="游佐浩二",
-	["illustrator:Kuradeel"]="",
+	["illustrator:Kuradeel"]="官方",
 	
 	["LuaNikushimi"]="仇恨",
 	[":LuaNikushimi"]="<b>（不共戴天）</b>每当你受到伤害后，你可以将牌堆顶的一张牌置于武将牌上，称为“仇”；每当你使用【杀】对目标角色造成伤害时，你可以将一张“仇”置入弃牌堆，令此伤害+1。",

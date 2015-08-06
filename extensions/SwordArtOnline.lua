@@ -306,7 +306,7 @@ Negai = sgs.CreateTriggerSkill{
 					num = num + 1
 				end
 			end
-			if num == 0 and sachi:askForSkillInvoke(self:objectName()) then
+			if num == 0 and sachi:askForSkillInvoke(self:objectName(), sgs.QVariant("skip")) then
 				local room = sachi:getRoom()
 				room:showAllCards(sachi)
 				sachi:skip(sgs.Player_Discard)
@@ -404,6 +404,7 @@ sgs.LoadTranslationTable{
 	["@LuaMayou"]="你需要弃置 %arg 张手牌",
 	["LuaNegai"]="祈愿",
 	[":LuaNegai"]="<b>（美丽的祈愿）</b>弃牌阶段开始前，若你的手牌中没有【杀】，你可以展示所有手牌（至少一张），然后跳过本回合的弃牌阶段。",
+	["LuaNegai:skip"]="你可以发动“美丽的祈愿”跳过弃牌阶段",
 	["LuaTakushi"]="寄托",
 	[":LuaTakushi"]="<b>（心灵寄托）</b><font color=\"red\"><b>限定技，</b></font>出牌阶段，你可以选择一名男性角色。直到游戏结束，每当该角色使用【杀】时，你可以摸一张牌。",
 	["@takushi"]="寄托",
@@ -530,7 +531,7 @@ Boueki = sgs.CreateTriggerSkill{
 		if agil:objectName() ~= source:objectName() then
 			return false
 		end
-		if card:getSkillName() ~= "boueki" then
+		if not card or card:getSkillName() ~= "boueki" then
 			return false
 		end
 		if not target or not target:isAlive() then
@@ -597,7 +598,128 @@ sgs.LoadTranslationTable{
 	["boueki"]="精明的商人",
 	["@LuaBoueki"]="请选择任意数量的点数之和不小于 %arg 的手牌，或者你的全部手牌",
 	["~LuaBoueki"]="选择手牌→点击“确定”",
-	["bouekigive"]="付款",
+	["bouekigive"]="支付费用",
 	
 	["~Agil"]=""
+}
+
+--SAO-110 Kuradeel
+Kuradeel = sgs.General(extension,"Kuradeel","sao","4",true)
+
+--Boukun
+Boukun = sgs.CreateTriggerSkill{
+	name = "LuaBoukun",
+	frequency = sgs.Skill_Frequent,
+	events = {sgs.Dying},
+	on_trigger = function(self, event, player, data)
+		local dying = data:toDying()
+		local who = dying.who
+		local damage = dying.damage
+		local from = damage.from
+		local card = damage.card
+		if who:objectName() == player:objectName() then
+			return false
+		end
+		if not from:hasSkill(self:objectName()) or from:objectName() ~= player:objectName() then
+			return false
+		end
+		if card:isKindOf("Slash") then
+			if from:askForSkillInvoke(self:objectName(), sgs.QVariant("draw")) then
+				from:drawCards(1)
+			end
+		end
+		return false
+	end
+}
+
+--Nikushimi
+NikushimiCard = sgs.CreateSkillCard{
+	name = "LuaNikushimi",
+	will_throw = false,
+	target_fixed = true,
+	handling_method = sgs.Card_MethodNone,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source,"LuaNikushimi")
+		room:broadcastSkillInvoke("LuaNikushimi")
+	
+		local card = self:getSubcards():first()
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", self:objectName(), "")
+		room:throwCard(sgs.Sanguosha:getCard(card), reason, nil)
+	end
+}
+
+LuaNikushimiVS = sgs.CreateOneCardViewAsSkill{
+	name = "LuaNikushimi",
+	response_pattern = "@@LuaNikushimi",
+	filter_pattern = ".|.|.|nikushimi",
+	expand_pile = "nikushimi",
+	view_as = function(self, card)
+		local nikushimiCard = NikushimiCard:clone()
+		nikushimiCard:addSubcard(card)
+		return nikushimiCard
+	end
+}
+
+NikushimiAddPile = sgs.CreateMasochismSkill{
+	name = "#LuaNikushimiAddPile",
+	on_damaged = function(self, player, damage)
+		local room = player:getRoom()
+		if player:askForSkillInvoke("LuaNikushimi", sgs.QVariant("addPile")) then
+			local id = room:drawCard()
+			player:addToPile("nikushimi", id)
+		end
+		return false
+	end
+}
+
+Nikushimi = sgs.CreateTriggerSkill{
+	name = "LuaNikushimi",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.DamageCaused},
+	view_as_skill = LuaNikushimiVS,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		if not damage.card or not damage.card:isKindOf("Slash") then
+			return false
+		end
+		if damage.chain or damage.transfer or not damage.by_user then
+			return false
+		end
+		if damage.from and damage.from:isAlive() and not damage.from:getPile("nikushimi"):isEmpty() then
+			local used = room:askForUseCard(damage.from, "@@LuaNikushimi", "@LuaNikushimi:"..damage.to:objectName(), -1, sgs.Card_MethodNone)
+			if used then
+				damage.damage = damage.damage + 1
+				data:setValue(damage)
+			end
+		end
+		return false
+	end
+}
+
+Kuradeel:addSkill(Boukun)
+Kuradeel:addSkill(Nikushimi)
+Kuradeel:addSkill(NikushimiAddPile)
+extension:insertRelatedSkills("LuaNikushimi","#LuaNikushimiAddPile")
+
+sgs.LoadTranslationTable{	
+	["Kuradeel"]="克拉帝尔",
+	["&Kuradeel"]="克拉帝尔",
+	["#Kuradeel"]="深仇大恨",
+	["designer:Kuradeel"]="Smwlover",
+	["cv:Kuradeel"]="游佐浩二",
+	["illustrator:Kuradeel"]="",
+	
+	["LuaNikushimi"]="仇恨",
+	[":LuaNikushimi"]="<b>（不共戴天）</b>每当你受到伤害后，你可以将牌堆顶的一张牌置于武将牌上，称为“仇”；每当你使用【杀】对目标角色造成伤害时，你可以将一张“仇”置入弃牌堆，令此伤害+1。",
+	["LuaNikushimi:addPile"]="你可以发动技能“不共戴天”",
+	["nikushimi"]="仇",
+	["luanikushimi"]="不共戴天",
+	["@LuaNikushimi"]="你可以对 %src 发动技能“不共戴天”",
+	["~LuaNikushimi"]="选择一张“仇”→点击“确定”",
+	["LuaBoukun"]="狂暴",
+	[":LuaBoukun"]="<b>（暴君之龙）</b>每当其他角色因受到你使用【杀】造成的伤害而进入濒死状态时，你可以摸一张牌。",
+	["LuaBoukun:draw"]="你可以发动“暴君之龙”摸一张牌",
+	
+	["~Kuradeel"]=""
 }

@@ -150,7 +150,7 @@ sgs.LoadTranslationTable{
 	["LuaOndo:draw"]="你可以对 %src 发动技能“心的温度”",
 	["LuaSoubi"]="锻冶",
 	[":LuaSoubi"]="<b>（装备锻冶）</b><font color=\"green\"><b>阶段技，</b></font>你可以将一张装备牌置于一名其他角色的装备区中，然后令你的手牌上限+X（X为该角色装备区中牌的数量），直到回合结束。",
-	["#SoubiMaxcard"]="%from 的武将技能 %arg 被触发，手牌上限增加 %arg2",
+	["#SoubiMaxcard"]="%from 的武将技能“%arg”被触发，手牌上限增加 %arg2",
 	["soubi"]="装备锻冶",
 	
 	["~Lisbeth"]=""
@@ -350,7 +350,7 @@ Takushi = sgs.CreateTriggerSkill{
 	frequency = sgs.Skill_Limited,
 	limit_mark = "@takushi",
 	events = {},
-	view_as_skill = LuaTakushiVS ,
+	view_as_skill = LuaTakushiVS,
 	on_trigger = function()
 		return false
 	end
@@ -413,6 +413,158 @@ sgs.LoadTranslationTable{
 	["Takushi$"]="image=image/animate/Sachi.png",
 	
 	["~Sachi"]="谢谢你，再见……"
+}
+
+--SAO-106 Yui
+Yui = sgs.General(extension,"Yui","sao","3",false)
+
+--Tamotsu
+Tamotsu = sgs.CreateTriggerSkill{
+	name = "LuaTamotsu",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.DamageInflicted},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		if damage.nature == sgs.DamageStruct_Thunder or damage.nature == sgs.DamageStruct_Fire then
+			--sendLog:
+			local log = sgs.LogMessage()
+			log.type = "#TamotsuPrevented"
+			log.from = player
+			log.arg = "LuaTamotsu"
+			log.arg2 = damage.damage
+			room:sendLog(log)
+			room:notifySkillInvoked(player,"LuaTamotsu")
+			room:broadcastSkillInvoke("LuaTamotsu")
+			return true
+		end
+		return false
+	end
+}
+
+--Kanshin
+Kanshin = sgs.CreateTriggerSkill{
+	name = "LuaKanshin",
+	events = {sgs.Damaged},
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local yui = room:findPlayerBySkillName(self:objectName())
+		if not yui or not yui:isAlive() then
+			return false
+		end
+		if yui:distanceTo(player) > 1 then
+			return false
+		end
+		local damage = data:toDamage()
+		local x = damage.damage
+		for i = 0, x-1, 1 do
+			if not yui or not yui:isAlive() or not player or not player:isAlive() then
+				return false
+			end
+			if yui:askForSkillInvoke(self:objectName(), sgs.QVariant("draw:"..player:objectName())) then
+				player:drawCards(1)
+			end
+		end
+		return false
+	end
+}
+
+--Yobu
+YobuCard = sgs.CreateSkillCard{
+	name = "LuaYobu",
+	target_fixed = true,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source, "LuaYobu")
+		room:broadcastSkillInvoke("LuaYobu")
+		source:loseMark("@yobu")
+		--Turnover:
+		source:turnOver()
+		--Get a random card:
+		local discardPile = room:getDiscardPile()
+		local weaponList = sgs.IntList()
+		for _,id in sgs.qlist(discardPile) do
+			local card = sgs.Sanguosha:getCard(id)
+			if card:isKindOf("Weapon") then
+				weaponList:append(id)
+			end
+		end
+		if weaponList:isEmpty() then
+			return
+		end
+		local randomNum = math.random(0, weaponList:length()-1)
+		local chosenID = weaponList:at(randomNum)
+		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		dummy:addSubcard(chosenID)
+		source:obtainCard(dummy) --Default behavior is "unhide this card".
+		--Get victims:
+		local chosenCard = sgs.Sanguosha:getCard(chosenID):getRealCard():toWeapon()
+		local range = chosenCard:getRange()
+		local victims = sgs.SPlayerList()
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if p and p:isAlive() and source:distanceTo(p) <= range then
+				room:doAnimate(1, source:objectName(), p:objectName()) --Instruct line.
+				victims:append(p)
+			end
+		end
+		--Deal damage:
+		for _, p in sgs.qlist(victims) do
+			if p and p:isAlive() then
+				room:damage(sgs.DamageStruct("LuaYobu", source, p, 1, sgs.DamageStruct_Fire))
+			end
+		end
+	end
+}
+
+LuaYobuVS = sgs.CreateViewAsSkill{
+	name = "LuaYobu",
+	n = 0,
+	view_as = function(self, cards)
+		local card = YobuCard:clone()
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("@yobu") >= 1
+	end
+}
+
+Yobu = sgs.CreateTriggerSkill{
+	name = "LuaYobu" ,
+	frequency = sgs.Skill_Limited,
+	limit_mark = "@yobu",
+	events = {},
+	view_as_skill = LuaYobuVS,
+	on_trigger = function()
+		return false
+	end
+}
+
+Yui:addSkill(Tamotsu)
+Yui:addSkill(Kanshin)
+Yui:addSkill(Yobu)
+
+sgs.LoadTranslationTable{	
+	["Yui"]="结衣",
+	["&Yui"]="结衣",
+	["#Yui"]="MHCP001",
+	["designer:Yui"]="Smwlover",
+	["cv:Yui"]="伊藤加奈惠",
+	["illustrator:Yui"]="",
+	
+	["LuaTamotsu"]="保护",
+	[":LuaTamotsu"]="<b>（系统保护）</b><font color=\"blue\"><b>锁定技，</b></font>每当你受到属性伤害时，防止此伤害。",
+	["#TamotsuPrevented"]="%from 的武将技能“%arg”被触发，防止了 %arg2 点伤害",
+	["LuaKanshin"]="护理",
+	[":LuaKanshin"]="<b>（精神护理）</b>每当一名距离不大于1的角色受到1点伤害后，你可以令该角色摸一张牌。",
+	["LuaKanshin:draw"]="你可以发动“精神护理”令 %src 摸一张牌",
+	["LuaYobu"]="召唤",
+	[":LuaYobu"]="<b>（神器召唤）</b><font color=\"red\"><b>限定技，</b></font>出牌阶段，你可以将武将牌翻面，从弃牌堆中随机获得一张武器牌，然后对距离不大于X的所有角色各造成1点火焰伤害（X为此牌的攻击范围）。",
+	["luayobu"]="神器召唤",
+	["@yobu"]="召唤",
+	
+	["~Yui"]=""
 }
 
 --SAO-109 Agil

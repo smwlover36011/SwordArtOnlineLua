@@ -502,6 +502,11 @@ YobuCard = sgs.CreateSkillCard{
 		--Get victims:
 		local chosenCard = sgs.Sanguosha:getCard(chosenID):getRealCard():toWeapon()
 		local range = chosenCard:getRange()
+		if range < 3 then
+			room:doLightbox("Yobu$", 2500)
+		else
+			room:doLightbox("YobuGreat$", 2500)
+		end
 		local victims = sgs.SPlayerList()
 		for _, p in sgs.qlist(room:getAlivePlayers()) do
 			if p and p:isAlive() and source:distanceTo(p) <= range then
@@ -551,7 +556,7 @@ sgs.LoadTranslationTable{
 	["#Yui"]="MHCP001",
 	["designer:Yui"]="Smwlover",
 	["cv:Yui"]="伊藤加奈惠",
-	["illustrator:Yui"]="",
+	["illustrator:Yui"]="Pixiv=32238450",
 	
 	["LuaTamotsu"]="保护",
 	[":LuaTamotsu"]="<b>（系统保护）</b><font color=\"blue\"><b>锁定技，</b></font>每当你受到属性伤害时，防止此伤害。",
@@ -563,6 +568,8 @@ sgs.LoadTranslationTable{
 	[":LuaYobu"]="<b>（神器召唤）</b><font color=\"red\"><b>限定技，</b></font>出牌阶段，你可以将武将牌翻面，从弃牌堆中随机获得一张武器牌，然后对距离不大于X的所有角色各造成1点火焰伤害（X为此牌的攻击范围）。",
 	["luayobu"]="神器召唤",
 	["@yobu"]="召唤",
+	["Yobu$"]="image=image/animate/Yui.png",
+	["YobuGreat$"]="image=image/animate/YuiGreat.png",
 	
 	["~Yui"]=""
 }

@@ -502,21 +502,18 @@ YobuCard = sgs.CreateSkillCard{
 		--Get victims:
 		local chosenCard = sgs.Sanguosha:getCard(chosenID):getRealCard():toWeapon()
 		local range = chosenCard:getRange()
-		if range < 3 then
-			room:doLightbox("Yobu$", 2500)
-		else
-			room:doLightbox("YobuGreat$", 2500)
-		end
+		room:doLightbox("Yobu$", 2500)
 		local victims = sgs.SPlayerList()
 		for _, p in sgs.qlist(room:getAlivePlayers()) do
 			if p and p:isAlive() and source:distanceTo(p) <= range then
-				room:doAnimate(1, source:objectName(), p:objectName()) --Instruct line.
 				victims:append(p)
 			end
 		end
+		room:sortByActionOrder(victims)
 		--Deal damage:
 		for _, p in sgs.qlist(victims) do
 			if p and p:isAlive() then
+				room:doAnimate(1, source:objectName(), p:objectName()) --Instruct line.
 				room:damage(sgs.DamageStruct("LuaYobu", source, p, 1, sgs.DamageStruct_Fire))
 			end
 		end
@@ -569,9 +566,135 @@ sgs.LoadTranslationTable{
 	["luayobu"]="神器召唤",
 	["@yobu"]="召唤",
 	["Yobu$"]="image=image/animate/Yui.png",
-	["YobuGreat$"]="image=image/animate/YuiGreat.png",
 	
 	["~Yui"]=""
+}
+--SAO-108 Klein
+Klein = sgs.General(extension,"Klein","sao","4",true)
+
+--Honpou
+function targetAvailable(player)
+	local targets = sgs.PlayerList()
+	local list = player:getAliveSiblings()
+	for _,target in sgs.qlist(list) do
+		if target:objectName() ~= player:objectName() and not target:isKongcheng() then
+			targets:append(target)
+		end
+	end
+	return not list:isEmpty()
+end
+
+function inSomebodysTurn(player)
+	local current = false
+	local players = player:getAliveSiblings()
+	players:append(player)
+	for _, p in sgs.qlist(players) do
+		if p:getPhase() ~= sgs.Player_NotActive then
+			current = true
+			break
+		end
+	end
+	return current
+end
+
+HonpouCard = sgs.CreateSkillCard{
+	name = "HonpouCard",
+	target_fixed = true,
+	on_validate = function(self, cardUse)
+		local source = cardUse.from
+		local room = source:getRoom()
+		local targets = sgs.SPlayerList()
+		local list = room:getAlivePlayers()
+		for _,tar in sgs.qlist(list) do
+			if tar:objectName() ~= source:objectName() and not tar:isKongcheng() then
+				targets:append(tar)
+			end
+		end
+		local target = room:askForPlayerChosen(source, targets, "LuaHonpou", "@LuaHonpouChoose", true, false)
+		if not target then
+			return nil
+		end
+		--From now on, we can assume that the player has already used "LuaHonpou" this turn.
+		--So we can attach a flag to the player.
+		local log = sgs.LogMessage()
+		log.type = "#HonpouInvoked"
+		log.from = source
+		log.to:append(target)
+		log.arg = "LuaHonpou"
+		room:sendLog(log)
+		room:notifySkillInvoked(source,"LuaHonpou")
+		room:broadcastSkillInvoke("LuaHonpou")
+		room:setPlayerFlag(source,"HonpouUsed")
+		room:doAnimate(1, source:objectName(), target:objectName()) --Instruct line.
+		--Pindian:
+		local success = source:pindian(target, "LuaHonpou", nil)
+		if success then
+			local analeptic = sgs.Sanguosha:cloneCard("analeptic", sgs.Card_NoSuit, 0)
+			analeptic:setSkillName("LuaHonpou")
+			return analeptic
+		else
+			if source:getPhase() == sgs.Player_Play then
+				room:setPlayerCardLimitation(source, "use", "Slash", true) --"True" means for single turn.
+			end
+		end
+		return nil
+	end
+}
+
+Honpou = sgs.CreateViewAsSkill{
+	name = "LuaHonpou",
+	n = 0,
+	enabled_at_play = function(self, player)
+		return inSomebodysTurn(player) and targetAvailable(player) and not player:hasFlag("HonpouUsed") and not player:isKongcheng() and sgs.Analeptic_IsAvailable(player)
+	end,
+	enabled_at_response = function(self, player, pattern)
+		return inSomebodysTurn(player) and targetAvailable(player) and not player:hasFlag("HonpouUsed") and not player:isKongcheng() and string.find(pattern, "analeptic")
+	end,
+	view_as = function(self, cards)
+		local card = HonpouCard:clone()
+		return card
+	end
+}
+
+HonpouClear = sgs.CreateTriggerSkill{
+	name = "#LuaHonpouClear",
+	events = {sgs.EventPhaseChanging},
+	on_trigger = function(self, event, player, data)
+		local change = data:toPhaseChange()
+		local room = player:getRoom()
+		if change.to == sgs.Player_NotActive then
+			--Clear Klein's "HonpouUsed" flag.
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:hasFlag("HonpouUsed") then
+					room:setPlayerFlag(p, "-HonpouUsed")
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end
+}
+
+Klein:addSkill(Honpou)
+Klein:addSkill(HonpouClear)
+extension:insertRelatedSkills("LuaHonpou","#LuaHonpouClear")
+
+sgs.LoadTranslationTable{	
+	["Klein"]="克莱因",
+	["&Klein"]="克莱因",
+	["#Klein"]="武士之风",
+	["designer:Klein"]="Smwlover",
+	["cv:Klein"]="平田广明",
+	["illustrator:Klein"]="Pixiv=34275976",
+	
+	["LuaHonpou"]="豪情",
+	[":LuaHonpou"]="<b>（豪情烈胆）</b>每名角色的回合限一次，每当你需要使用【酒】时，你可以与一名其他角色拼点。若你赢，视为你使用了一张【酒】；若你没赢且此时在你的出牌阶段内，你无法使用【杀】直到回合结束。",
+	["@LuaHonpouChoose"]="请选择一名角色与其拼点",
+	["#HonpouInvoked"]="%from 发动技能“%arg”对 %to 进行拼点",
+	
+	["~Klein"]=""
 }
 
 --SAO-109 Agil

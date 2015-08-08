@@ -1005,3 +1005,75 @@ sgs.LoadTranslationTable{
 	
 	["~Kuradeel"]=""
 }
+
+--SAO-201 Kirito(ALO)
+KiritoALO = sgs.General(extension,"KiritoALO","sao","4",true)
+
+--Rengeki
+Rengeki = sgs.CreateTriggerSkill{
+	name = "LuaRengeki",
+	frequency = sgs.Skill_Frequent, 
+	priority = -100,
+	events = {sgs.PreDamageDone, sgs.EventPhaseStart, sgs.EventPhaseEnd},
+	on_trigger = function(self, event, player, data)
+		if event == sgs.EventPhaseStart then
+			if player:hasSkill(self:objectName()) then
+				if player:getPhase() == sgs.Player_Play then
+					player:gainMark("@phaseNum")
+				elseif player:getPhase() == sgs.Player_NotActive then
+					player:loseAllMarks("@phaseNum")
+				end
+			end
+		elseif event == sgs.PreDamageDone then
+			local damage = data:toDamage()
+			local from = damage.from
+			if from and from:getPhase() == sgs.Player_Play and from:hasSkill(self:objectName()) then
+				from:setMark("DamageDealt", from:getMark("DamageDealt") + damage.damage)
+			end
+		elseif event == sgs.EventPhaseEnd then
+			if player:hasSkill(self:objectName()) then
+				if player:getPhase() == sgs.Player_Play then
+					local curDamage = player:getMark("DamageDealt")
+					local curTurn = player:getMark("@phaseNum")
+					--Clear player's mark:
+					player:setMark("DamageDealt", 0)
+					if curDamage >= curTurn then
+						if player:askForSkillInvoke(self:objectName(), sgs.QVariant("extra")) then
+							player:drawCards(curTurn)
+							local room = player:getRoom()
+							local log = sgs.LogMessage()
+							log.type = "#RengekiExtra"
+							log.from = player
+							log.arg = "play"
+							room:sendLog(log)
+							player:insertPhase(sgs.Player_Play)
+						end
+					end
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)	
+		return target and target:isAlive()
+	end
+}
+
+KiritoALO:addSkill(Rengeki)
+	
+sgs.LoadTranslationTable{	
+	["KiritoALO"]="桐人ALO",
+	["&KiritoALO"]="桐人",
+	["#KiritoALO"]="黑色剑士",
+	["designer:KiritoALO"]="Smwlover",
+	["cv:KiritoALO"]="松冈祯丞",
+	["illustrator:KiritoALO"]="Pixiv=45122640",
+	
+	["LuaRengeki"]="连携",
+	[":LuaRengeki"]="<b>（剑技连携）</b>出牌阶段结束后，若本阶段内你造成了至少X点伤害，你可以摸X张牌，然后执行一个额外的出牌阶段（X为本回合内你执行过的出牌阶段数量）。",
+	["LuaRengeki:extra"]="你可以发动技能“剑技连携”进行一个额外的出牌阶段",
+	["#RengekiExtra"]="%from 进行一个额外的 %arg 阶段",
+	["@phaseNum"]="阶段",
+	
+	["~KiritoALO"]=""
+}	

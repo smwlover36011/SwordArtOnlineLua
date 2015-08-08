@@ -1192,7 +1192,7 @@ sgs.LoadTranslationTable{
 	["#AsunaALO"]="狂暴补师",
 	["designer:AsunaALO"]="Smwlover",
 	["cv:AsunaALO"]="户松遥",
-	["illustrator:AsunaALO"]="",
+	["illustrator:AsunaALO"]="Pixiv=45620938",
 	
 	["LuaBerserker"]="补师",
 	[":LuaBerserker"]="<b>（狂暴补师）</b><font color=\"green\"><b>阶段技，</b></font>你可以弃置一张红色牌，令一名已受伤的角色回复1点体力，然后若该角色仍处于受伤状态，你可以视为对一名其他角色使用了一张【杀】。",

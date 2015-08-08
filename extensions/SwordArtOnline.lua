@@ -1077,3 +1077,131 @@ sgs.LoadTranslationTable{
 	
 	["~KiritoALO"]=""
 }	
+
+--SAO-202 Asuna(ALO)
+AsunaALO = sgs.General(extension,"AsunaALO","sao","3",false)
+
+--Berserker
+BerserkerCard = sgs.CreateSkillCard{
+	name = "BerserkerCard",
+	target_fixed = false,
+	will_throw = true,
+	filter = function(self, targets, to_select)
+		return #targets == 0 and to_select:isWounded()
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		--Recover:
+		local target = targets[1]
+		local recover = sgs.RecoverStruct()
+		recover.card = self
+		recover.who = source
+		room:recover(target, recover)
+		--If target is still wounded:
+		if target and target:isAlive() and target:isWounded() then
+			local slashTargets = sgs.SPlayerList()
+			local list = room:getAlivePlayers()
+			for _,slashTarget in sgs.qlist(list) do
+				if source:canSlash(slashTarget, nil, false) then
+					slashTargets:append(slashTarget)
+				end
+			end
+			if slashTargets:isEmpty() then
+				return false
+			end
+			local slashTarget = room:askForPlayerChosen(source, slashTargets, "LuaBerserker", "@BerserkerChoose", true, false)
+			if not slashTarget then
+				return false
+			end
+			--Use slash to slashTarget:
+			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+			slash:setSkillName("LuaBerserker")
+			local card_use = sgs.CardUseStruct()
+			card_use.card = slash
+			card_use.from = source
+			card_use.to:append(slashTarget)
+			room:useCard(card_use, false)
+		end
+	end
+}
+
+Berserker = sgs.CreateViewAsSkill{
+	name = "LuaBerserker",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		return #selected == 0 and to_select:isRed()
+	end,
+	view_as = function(self, cards)
+		if #cards == 1 then
+			local card = BerserkerCard:clone()
+			card:addSubcard(cards[1])
+			card:setSkillName(self:objectName())
+			return card
+		end
+		return nil
+	end,
+	enabled_at_play = function(self, player)
+		return player:canDiscard(player, "he") and not player:hasUsed("#BerserkerCard")
+	end
+}
+
+--Mizuiro
+Mizuiro = sgs.CreateTriggerSkill{
+	name = "LuaMizuiro",
+	events = {sgs.CardEffected},
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local effect = data:toCardEffect()
+		local victim = effect.to
+		local card = effect.card
+		if not card or not card:isNDTrick() or not card:isBlack() then
+			return false
+		end
+		--Find Asuna:
+		local asuna = room:findPlayerBySkillName(self:objectName())
+		if not asuna or not asuna:isAlive() then
+			return false
+		end
+		if asuna:distanceTo(victim) > 1 then
+			return false
+		end
+		if asuna:askForSkillInvoke(self:objectName(), sgs.QVariant("prevent:"..victim:objectName())) then
+			local msg = sgs.LogMessage()
+			msg.type = "$MizuiroPrevent"
+			msg.from = effect.from
+			msg.to:append(victim)
+			msg.card_str = tostring(card:getEffectiveId())
+			room:sendLog(msg)
+			return true
+		end
+		return false
+	end
+}
+
+AsunaALO:addSkill(Berserker)
+AsunaALO:addSkill(Mizuiro)
+
+sgs.LoadTranslationTable{	
+	["AsunaALO"]="亚丝娜ALO",
+	["&AsunaALO"]="亚丝娜",
+	["#AsunaALO"]="狂暴补师",
+	["designer:AsunaALO"]="Smwlover",
+	["cv:AsunaALO"]="户松遥",
+	["illustrator:AsunaALO"]="",
+	
+	["LuaBerserker"]="补师",
+	[":LuaBerserker"]="<b>（狂暴补师）</b><font color=\"green\"><b>阶段技，</b></font>你可以弃置一张红色牌，令一名已受伤的角色回复1点体力，然后若该角色仍处于受伤状态，你可以视为对一名其他角色使用了一张【杀】。",
+	["berserker"]="狂暴补师",
+	["@BerserkerChoose"]="你可以选择一名其他角色视为对其使用【杀】",
+	["LuaMizuiro"]="屏障",
+	[":LuaMizuiro"]="<b>（水色屏障）</b>每当一名距离不大于1的角色成为黑色非延时类锦囊牌的目标后，你可以令此牌对该角色无效。",
+	["LuaMizuiro:prevent"]="你可以对 %src 发动技能“水色屏障”",
+	["$MizuiroPrevent"]="%from 使用的 %card 对 %to 无效",
+	
+	["~AsunaALO"]=""
+}

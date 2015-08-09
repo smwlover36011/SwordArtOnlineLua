@@ -1096,7 +1096,6 @@ BerserkerCard = sgs.CreateSkillCard{
 		--Recover:
 		local target = targets[1]
 		local recover = sgs.RecoverStruct()
-		recover.card = self
 		recover.who = source
 		room:recover(target, recover)
 		--If target is still wounded:
@@ -1204,4 +1203,112 @@ sgs.LoadTranslationTable{
 	["$MizuiroPrevent"]="%from 使用的 %card 对 %to 无效",
 	
 	["~AsunaALO"]=""
+}
+
+--SAO-203 Leafa
+Leafa = sgs.General(extension,"Leafa","sao","3",false)
+
+--Mimamoru
+MimamoruCard = sgs.CreateSkillCard{
+	name = "MimamoruCard",
+	target_fixed = false,
+	will_throw = false,
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:isWounded() and to_select:objectName() ~= player:objectName()
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_effect = function(self, effect)
+		local source = effect.from
+		local dest = effect.to
+		local room = source:getRoom()
+		dest:obtainCard(self)
+		--Recover:
+		local recover = sgs.RecoverStruct()
+		recover.who = source
+		room:recover(dest, recover)
+	end
+}
+
+Mimamoru = sgs.CreateViewAsSkill{
+	name = "LuaMimamoru",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		return to_select:getSuit() == sgs.Card_Heart
+	end,
+	view_as = function(self, cards)
+		if #cards == 1 then
+			local mimamoruCard = MimamoruCard:clone()
+			mimamoruCard:addSubcard(cards[1])
+			return mimamoruCard
+		end
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#MimamoruCard")
+	end
+}
+
+--Kendou
+Kendou = sgs.CreateTriggerSkill{
+	name = "LuaKendou",
+	events = {sgs.CardFinished},
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		if use.card:isKindOf("EquipCard") then
+			local leafa = room:findPlayerBySkillName(self:objectName())
+			if not leafa or not leafa:isAlive() or leafa:objectName() == player:objectName() then
+				return false
+			end
+			local equip = use.card:getRealCard():toEquipCard()
+			local index = equip:location()
+			if leafa:getEquip(index) == nil then
+				return false
+			end
+			--Ask leafa for choice:
+			local choice = room:askForChoice(leafa, self:objectName(), "draw_None+draw_Self+draw_Other", data)
+			if choice ~= "draw_None" then
+				room:notifySkillInvoked(leafa, self:objectName())
+				room:broadcastSkillInvoke(self:objectName())
+				--Sendlog:
+				local log = sgs.LogMessage()
+				log.type = "#TriggerSkill"
+				log.from = leafa
+				log.arg = self:objectName()
+				room:sendLog(log)
+				if choice == "draw_Self" then
+					leafa:drawCards(1)
+				elseif choice == "draw_Other" then
+					player:drawCards(1)
+				end
+			end
+		end
+		return false
+	end
+}
+
+Leafa:addSkill(Mimamoru)
+Leafa:addSkill(Kendou)
+
+sgs.LoadTranslationTable{	
+	["Leafa"]="莉法",
+	["&Leafa"]="莉法",
+	["#Leafa"]="绿之剑士",
+	["designer:Leafa"]="Smwlover",
+	["cv:Leafa"]="竹达彩奈",
+	["illustrator:Leafa"]="Pixiv=31393729",
+	
+	["LuaMimamoru"]="守望",
+	[":LuaMimamoru"]="<b>（守望的心）</b><font color=\"green\"><b>阶段技，</b></font>你可以将一张红桃牌交给一名其他角色，令其回复1点体力。",
+	["LuaKendou"]="剑道",
+	[":LuaKendou"]="<b>（剑道少女）</b>每当其他角色使用一张装备牌后，若你的装备区中有相同种类的装备牌，你可以令你或该角色摸一张牌。",
+	["draw_None"]="不发动",
+	["draw_Self"]="令你摸一张牌",
+	["draw_Other"]="令该角色摸一张牌",
+	
+	["~Leafa"]=""
 }

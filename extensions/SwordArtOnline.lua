@@ -1312,3 +1312,89 @@ sgs.LoadTranslationTable{
 	
 	["~Leafa"]=""
 }
+
+--SAO-206 Obeiron
+Obeiron = sgs.General(extension,"Obeiron","sao","4",true)
+
+--Akuma
+Akuma = sgs.CreateFilterSkill{
+	name = "LuaAkuma",
+	view_filter = function(self, to_select)
+		return to_select:getSuit() == sgs.Card_Heart
+	end,
+	view_as = function(self, card)
+		local id = card:getEffectiveId()
+		local new_card = sgs.Sanguosha:getWrappedCard(id)
+		new_card:setSkillName(self:objectName())
+		new_card:setSuit(sgs.Card_Spade)
+		new_card:setModified(true)
+		return new_card
+	end
+}
+
+--Fushoku
+FushokuCard = sgs.CreateSkillCard{
+	name = "FushokuCard",
+	target_fixed = false,
+	will_throw = false,
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_effect = function(self, effect)
+		local source = effect.from
+		local dest = effect.to
+		local room = source:getRoom()
+		dest:obtainCard(self)
+		--Discard a handcard from dest.
+		if source:isAlive() and dest:isAlive() and source:canDiscard(dest, "h") then
+			local card_id = room:askForCardChosen(source, dest, "h", "LuaFushoku", false, sgs.Card_MethodDiscard)
+			room:throwCard(card_id, dest, source)
+			--Is the card a spade card?
+			local card = sgs.Sanguosha:getCard(card_id)
+			if card:getSuit() ~= sgs.Card_Spade then
+				room:damage(sgs.DamageStruct("LuaFushoku", source, dest))
+			end
+		end
+	end
+}
+
+Fushoku = sgs.CreateViewAsSkill{
+	name = "LuaFushoku",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		return to_select:getSuit() == sgs.Card_Spade
+	end,
+	view_as = function(self, cards)
+		if #cards == 1 then
+			local fushokuCard = FushokuCard:clone()
+			fushokuCard:addSubcard(cards[1])
+			return fushokuCard
+		end
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#FushokuCard")
+	end
+}
+
+Obeiron:addSkill(Akuma)
+Obeiron:addSkill(Fushoku)
+
+sgs.LoadTranslationTable{	
+	["Obeiron"]="奥伯龙",
+	["&Obeiron"]="奥伯龙",
+	["#Obeiron"]="精灵王",
+	["designer:Obeiron"]="Smwlover",
+	["cv:Obeiron"]="子安武人",
+	["illustrator:Obeiron"]="官方",
+	
+	["LuaAkuma"]="恶毒",
+	[":LuaAkuma"]="<b>（恶毒之心）</b><font color=\"blue\"><b>锁定技，</b></font>你的红桃牌均视为黑桃牌。",
+	["LuaFushoku"]="侵蚀",
+	[":LuaFushoku"]="<b>（心智侵蚀）</b><font color=\"green\"><b>阶段技，</b></font>你可以将一张黑桃牌交给一名其他角色，然后弃置该角色的一张手牌，若此牌不为黑桃，你对该角色造成1点伤害。",
+	["fushoku"]="心智侵蚀",
+	
+	["~Obeiron"]=""
+}

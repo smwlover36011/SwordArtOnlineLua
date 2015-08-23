@@ -1304,6 +1304,7 @@ sgs.LoadTranslationTable{
 	
 	["LuaMimamoru"]="守望",
 	[":LuaMimamoru"]="<b>（守望的心）</b><font color=\"green\"><b>阶段技，</b></font>你可以将一张红桃牌交给一名其他角色，令其回复1点体力。",
+	["mimamoru"]="守望的心",
 	["LuaKendou"]="剑道",
 	[":LuaKendou"]="<b>（剑道少女）</b>每当其他角色使用一张装备牌后，若你的装备区中有相同种类的装备牌，你可以令你或该角色摸一张牌。",
 	["draw_None"]="不发动",
@@ -1397,4 +1398,82 @@ sgs.LoadTranslationTable{
 	["fushoku"]="心智侵蚀",
 	
 	["~Obeiron"]=""
+}
+
+--SAO-303 DeathGun
+DeathGun = sgs.General(extension,"DeathGun","sao","4",true)
+
+--Toumei
+Toumei = sgs.CreateProhibitSkill{
+	name = "LuaToumei",
+	is_prohibited = function(self, from, to, card)
+		if to:hasSkill(self:objectName()) and to:getMark("@toumei") > 0 then
+			return (card:isKindOf("TrickCard") or card:isKindOf("Slash") or card:isKindOf("QiceCard")) and card:isBlack() and card:getSkillName() ~= "nosguhuo"
+		end
+	end
+}
+
+ToumeiTrigger = sgs.CreateTriggerSkill{
+	name = "#LuaToumeiTrigger",
+	events = {sgs.GameStart, sgs.EventPhaseStart},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.GameStart then
+			player:gainMark("@toumei", 1)
+		elseif event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_RoundStart then
+				if player:getMark("@toumei") > 0 then
+					player:loseAllMarks("@toumei")
+				end
+			end
+		end
+		return false
+	end
+}
+
+--Maboroshi
+Maboroshi = sgs.CreateTriggerSkill{
+	name = "LuaMaboroshi",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.DamageCaused},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		if damage.card and damage.card:isKindOf("Slash") and damage.by_user and not damage.chain and not damage.transfer then
+			if player:askForSkillInvoke(self:objectName(), sgs.QVariant("prevent:"..damage.to:objectName())) then
+				local to = damage.to
+				to:gainMark("@death", 1)
+				--If there're more than 3 marks:
+				if to:getMark("@death") >= 3 then
+					room:killPlayer(to)
+				end
+				return true
+			end
+		end
+		return false
+	end
+}
+
+DeathGun:addSkill(Toumei)
+DeathGun:addSkill(ToumeiTrigger)
+DeathGun:addSkill(Maboroshi)
+extension:insertRelatedSkills("LuaToumei","#LuaToumeiTrigger")
+
+sgs.LoadTranslationTable{	
+	["DeathGun"]="新川昌一",
+	["&DeathGun"]="新川昌一",
+	["#DeathGun"]="死枪",
+	["designer:DeathGun"]="Smwlover",
+	["cv:DeathGun"]="大原崇",
+	["illustrator:DeathGun"]="官方",
+	
+	["LuaToumei"]="隐身",
+	[":LuaToumei"]="<b>（隐身斗篷）</b><font color=\"blue\"><b>锁定技，</b></font>你无法成为黑色【杀】或黑色锦囊牌的目标，直到你的第一个回合开始。",
+	["@toumei"]="隐身",
+	["LuaMaboroshi"]="死枪",
+	[":LuaMaboroshi"]="<b>（幻之铳弹）</b>每当你使用【杀】对目标角色造成伤害时，你可以防止此伤害并令该角色获得1枚“死亡”标记，然后若该角色的“死亡”标记数量不小于3，该角色立即死亡。",
+	["LuaMaboroshi:prevent"]="你可以对 %src 发动技能“幻之铳弹”",
+	["@death"]="死亡",
+	
+	["~DeathGun"]=""
 }

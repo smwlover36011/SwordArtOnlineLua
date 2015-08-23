@@ -1477,3 +1477,6 @@ sgs.LoadTranslationTable{
 	
 	["~DeathGun"]=""
 }
+
+--SAO-304 ShinkawaKyouni
+ShinkawaKyouni = sgs.General(extension,"ShinkawaKyouni","sao","3",true)

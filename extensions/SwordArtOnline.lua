@@ -276,7 +276,7 @@ Mayou = sgs.CreateTriggerSkill{
 				log.arg = self:objectName()
 				room:sendLog(log)
 				
-				if not room:askForCard(sachi, ".", "@LuaMayou:::"..1, data, self:objectName()) then
+				if not room:askForCard(sachi, ".|.|.|hand", "@LuaMayou:::"..1, data, self:objectName()) then
 					local nullified_list = use.nullified_list
 					for _, p in sgs.qlist(use.to) do
 						table.insert(nullified_list, p:objectName())
@@ -1579,7 +1579,7 @@ Warui = sgs.CreateTriggerSkill{
 						if not shinkawa or not shinkawa:isAlive() then
 							return false
 						end
-						local card = room:askForCard(shinkawa, ".", "@WaruiGive:" .. player:objectName(), data, sgs.Card_MethodNone)
+						local card = room:askForCard(shinkawa, ".|.|.|.", "@WaruiGive:" .. player:objectName(), data, sgs.Card_MethodNone)
 						if card then
 							local log = sgs.LogMessage()
 							log.type = "#UramiInvoke"
@@ -1635,7 +1635,7 @@ sgs.LoadTranslationTable{
 	["@UramiChoose"]="你可以发动技能“怀恨在心”获得一名手牌数最多的角色的一张手牌",
 	["#UramiInvoke"]="%from 对 %to 发动了技能“%arg”",
 	["LuaWarui"]="作伥",
-	[":LuaWarui"]="<b>（为虎作伥）</b>每当其他角色于出牌阶段内使用的【杀】结算完毕后，若此【杀】没有造成伤害，你可以将一张牌交给该角色，然后令此回合内该角色使用【杀】的次数上限+1。",
+	[":LuaWarui"]="<b>（为虎作伥）</b>每当其他角色于出牌阶段内使用的【杀】结算完毕后，若此【杀】没有造成伤害，你可以将一张牌交给该角色，然后令此阶段内该角色使用【杀】的次数上限+1。",
 	["@WaruiGive"]="你可以发动“为虎作伥”交给 %src 一张手牌",
 	
 	["~ShinkawaKyouni"]=""

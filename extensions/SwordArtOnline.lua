@@ -28,7 +28,7 @@ Ondo = sgs.CreateMasochismSkill{
 			if target:askForSkillInvoke(self:objectName(), sgs.QVariant("draw:"..source:objectName())) then
 				local room = target:getRoom()
 				room:showAllCards(source)
-				local cards = source:getHandcards() --getHandCards() returns QList<Card*> while handCards() returns QList<int> where "int" is cardId.
+				local cards = source:getHandcards() --getHandcards() returns QList<Card*> while handCards() returns QList<int> where "int" is cardId.
 				local num = 0
 				for _, card in sgs.qlist(cards) do
 					if card:isRed() then
@@ -147,7 +147,7 @@ sgs.LoadTranslationTable{
 	
 	["LuaOndo"]="温度",
 	[":LuaOndo"]="<b>（心的温度）</b>每当你受到伤害后，你可以令伤害来源展示所有手牌，其中每有一张红色牌，你摸一张牌（至多五张）。",
-	["LuaOndo:draw"]="你可以对 %src 发动技能“心的温度”",
+	["LuaOndo:draw"]="你可以发动技能“心的温度”令 %src 展示手牌",
 	["LuaSoubi"]="锻冶",
 	[":LuaSoubi"]="<b>（装备锻冶）</b><font color=\"green\"><b>阶段技，</b></font>你可以将一张装备牌置于一名其他角色的装备区中，然后令你的手牌上限+X（X为该角色装备区中牌的数量），直到回合结束。",
 	["#SoubiMaxcard"]="%from 的武将技能“%arg”被触发，手牌上限增加 %arg2",
@@ -1639,4 +1639,111 @@ sgs.LoadTranslationTable{
 	["@WaruiGive"]="你可以发动“为虎作伥”交给 %src 一张手牌",
 	
 	["~ShinkawaKyouni"]=""
+}
+
+--SAO-407 Alice
+Alice = sgs.General(extension,"Alice","sao","3",false)
+
+--Hanaben
+Hanaben = sgs.CreateViewAsSkill{
+	name = "LuaHanaben",
+	n = 4,
+	response_or_use = true,
+	view_filter = function(self, selected, to_select)
+		local available = true
+		for _,p in pairs(selected) do
+			if p:getSuit() == to_select:getSuit() then
+				available = false
+			end
+		end
+		return available and not to_select:isEquipped()
+	end,
+	view_as = function(self, cards)
+		if #cards == 0 then
+			return nil
+		else
+			local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+			card:setSkillName(self:objectName())
+			for _,c in ipairs(cards) do
+				card:addSubcard(c)
+			end
+			return card
+		end
+	end,
+	enabled_at_play = function(self, player)
+		return sgs.Slash_IsAvailable(player)
+	end, 
+	enabled_at_response = function(self, player, pattern)
+		return pattern == "slash"
+	end
+}
+
+HanabenExtra = sgs.CreateTargetModSkill{
+	name = "#LuaHanabenExtra" ,
+	extra_target_func = function(self, from, card)
+		if from:hasSkill(self:objectName()) and card:getSkillName() == "LuaHanaben" then
+			local number = card:getSubcards():length()
+			return number - 1
+		end
+		return 0
+	end
+}
+
+--Kouei
+function findSuit(suitList, suit)
+	for _, thisSuit in ipairs(suitList) do
+		if thisSuit == suit then
+			return true
+		end
+	end
+	return false
+end
+
+Kouei = sgs.CreateMasochismSkill{
+	name = "LuaKouei",
+	on_damaged = function(self, target, damage)
+		local room = target:getRoom()
+		repeat
+			local available = true
+			if target:askForSkillInvoke(self:objectName(), sgs.QVariant("draw")) then
+				room:drawCards(target, 1, "LuaKouei")
+				room:showAllCards(target)
+				--Are the card suits different from each other?
+				local suitList = {}
+				local cards = damage.to:getHandcards()
+				for _, card in sgs.qlist(cards) do
+					local suit = card:getSuit()
+					if findSuit(suitList, suit) then
+						available = false
+						break
+					end
+					table.insert(suitList, suit)
+				end
+			else
+				available = false
+			end
+		until not available
+	end
+}
+
+Alice:addSkill(Hanaben)
+Alice:addSkill(HanabenExtra)
+Alice:addSkill(Kouei)
+extension:insertRelatedSkills("LuaHanaben","#LuaHanabenExtra")
+
+sgs.LoadTranslationTable{	
+	["Alice"]="爱丽丝·滋贝鲁库",
+	["&Alice"]="爱丽丝",
+	["#Alice"]="金色的骑士",
+	["designer:Alice"]="Smwlover",
+	["cv:Alice"]="无",
+	["illustrator:Alice"]="官方",
+	
+	["LuaHanaben"]="花舞",
+	[":LuaHanaben"]="<b>（繁花之舞）</b>你可以将任意数量的花色各不相同的手牌当作【杀】使用，此【杀】的目标数量上限至少为X（X为这些牌的数量）。",
+	["LuaKouei"]="荣耀",
+	[":LuaKouei"]="<b>（荣耀之骑士）</b>每当你受到伤害后，你可以摸一张牌，然后展示所有手牌，若花色各不相同，你可以重复此流程。",
+	["LuaKouei:draw"]="你可以发动技能“荣耀之骑士”摸一张牌并展示所有手牌",
+	
+	["~Alice"]=""
 }

@@ -1171,10 +1171,10 @@ Mizuiro = sgs.CreateTriggerSkill{
 		end
 		if asuna:askForSkillInvoke(self:objectName(), sgs.QVariant("prevent:"..victim:objectName())) then
 			local msg = sgs.LogMessage()
-			msg.type = "$MizuiroPrevent"
+			msg.type = "#MizuiroPrevent"
 			msg.from = effect.from
 			msg.to:append(victim)
-			msg.card_str = tostring(card:getEffectiveId())
+			msg.arg = card:objectName()
 			room:sendLog(msg)
 			return true
 		end
@@ -1200,7 +1200,7 @@ sgs.LoadTranslationTable{
 	["LuaMizuiro"]="屏障",
 	[":LuaMizuiro"]="<b>（水色屏障）</b>每当一名距离不大于1的角色成为黑色非延时类锦囊牌的目标后，你可以令此牌对该角色无效。",
 	["LuaMizuiro:prevent"]="你可以对 %src 发动技能“水色屏障”",
-	["$MizuiroPrevent"]="%from 使用的 %card 对 %to 无效",
+	["#MizuiroPrevent"]="%from 使用的【%arg】对 %to 无效",
 	
 	["~AsunaALO"]=""
 }
@@ -1442,8 +1442,13 @@ Maboroshi = sgs.CreateTriggerSkill{
 		if damage.card and damage.card:isKindOf("Slash") and damage.by_user and not damage.chain and not damage.transfer then
 			if player:askForSkillInvoke(self:objectName(), sgs.QVariant("prevent:"..damage.to:objectName())) then
 				local to = damage.to
+				local msg = sgs.LogMessage()
+				msg.type = "#MaboroshiPrevent"
+				msg.to:append(to)
+				msg.arg = damage.card:objectName()
+				room:sendLog(msg)
+				--Gain a "Death" mark.
 				to:gainMark("@death", 1)
-				--If there're more than 3 marks:
 				if to:getMark("@death") >= 3 then
 					room:killPlayer(to)
 				end
@@ -1473,6 +1478,7 @@ sgs.LoadTranslationTable{
 	["LuaMaboroshi"]="死枪",
 	[":LuaMaboroshi"]="<b>（幻之铳弹）</b>每当你使用【杀】对目标角色造成伤害时，你可以防止此伤害并令该角色获得1枚“死亡”标记，然后若该角色的“死亡”标记数量不小于3，该角色立即死亡。",
 	["LuaMaboroshi:prevent"]="你可以对 %src 发动技能“幻之铳弹”",
+	["#MaboroshiPrevent"]="防止 %to 受到的【%arg】的伤害",
 	["@death"]="死亡",
 	
 	["~DeathGun"]=""
@@ -1480,3 +1486,157 @@ sgs.LoadTranslationTable{
 
 --SAO-304 ShinkawaKyouni
 ShinkawaKyouni = sgs.General(extension,"ShinkawaKyouni","sao","3",true)
+
+--Urami
+Urami = sgs.CreateTriggerSkill{
+	name = "LuaUrami",
+	events = {sgs.CardsMoveOneTime},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local move = data:toMoveOneTime()
+		if move.from and move.from:objectName() == player:objectName() and move.from_places:contains(sgs.Player_PlaceHand) and move.is_last_handcard then
+			--Get the player with the most handcard number.
+			local other_players = room:getOtherPlayers(player)
+			local most = 0
+			for _, p in sgs.qlist(other_players) do
+				most = math.max(p:getHandcardNum(), most)
+			end
+			if most == 0 then
+				return false
+			end
+			local availableTarget = sgs.SPlayerList()
+			for _,tar in sgs.qlist(other_players) do
+				if tar:getHandcardNum() == most then
+					availableTarget:append(tar)
+				end
+			end
+			local target = room:askForPlayerChosen(player, availableTarget, self:objectName(), "@UramiChoose", true, false)
+			if target then
+				local log = sgs.LogMessage()
+				log.type = "#UramiInvoke"
+				log.from = player
+				log.to:append(target)
+				log.arg = self:objectName()
+				room:sendLog(log)
+				--Instruct Line:
+				room:doAnimate(1, player:objectName(), target:objectName())
+				room:notifySkillInvoked(player,self:objectName())
+				room:broadcastSkillInvoke(self:objectName())
+
+				local id = room:askForCardChosen(player, target, "h", self:objectName())
+				local card = sgs.Sanguosha:getCard(id)
+				player:obtainCard(card)
+			end
+		end
+		return false
+	end
+}
+
+--Warui
+WaruiList = {}
+Warui = sgs.CreateTriggerSkill{
+	name = "LuaWarui",
+	events = {sgs.CardUsed, sgs.PreDamageDone, sgs.CardFinished, sgs.EventPhaseChanging},
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.CardUsed then
+			if not player:hasSkill(self:objectName()) and player:getPhase() == sgs.Player_Play then
+				local use = data:toCardUse()
+				if use.card and use.card:isKindOf("Slash") then
+					table.insert(WaruiList, use.card)
+				end
+			end
+		elseif event == sgs.PreDamageDone then
+			local damage = data:toDamage()
+			if damage.card and damage.card:isKindOf("Slash") then
+				for _, card in ipairs(WaruiList) do
+					if card:getEffectiveId() == damage.card:getEffectiveId() then
+						table.removeOne(WaruiList,card)
+						break
+					end
+				end
+			end
+		elseif event == sgs.CardFinished then
+			if player and player:isAlive() and not player:hasSkill(self:objectName()) then
+				local use = data:toCardUse()
+				if use.card and use.card:isKindOf("Slash") then
+					canInvoke = false
+					for _, card in ipairs(WaruiList) do
+						if card:getEffectiveId() == use.card:getEffectiveId() then
+							table.removeOne(WaruiList,card)
+							if player:getPhase() == sgs.Player_Play then
+								canInvoke = true
+							end
+							break
+						end
+					end
+					--Shinkawa Kyouni can invoke his skill.
+					if canInvoke then
+						local shinkawa = room:findPlayerBySkillName(self:objectName())
+						if not shinkawa or not shinkawa:isAlive() then
+							return false
+						end
+						local card = room:askForCard(shinkawa, ".", "@WaruiGive:" .. player:objectName(), data, sgs.Card_MethodNone)
+						if card then
+							local log = sgs.LogMessage()
+							log.type = "#UramiInvoke"
+							log.from = shinkawa
+							log.to:append(player)
+							log.arg = self:objectName()
+							room:sendLog(log)
+							--Instruct Line:
+							room:doAnimate(1, shinkawa:objectName(), player:objectName())
+							room:notifySkillInvoked(shinkawa,self:objectName())
+							room:broadcastSkillInvoke(self:objectName())
+							
+							player:obtainCard(card)
+							room:addPlayerMark(player, "WaruiAdditional")
+						end
+					end
+				end
+			end
+		elseif event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.from == sgs.Player_Play then
+				if player:getMark("WaruiAdditional") > 0 then
+					room:setPlayerMark(player, "WaruiAdditional", 0)
+				end
+			end
+		end
+		return false
+	end
+}
+
+WaruiAdditional = sgs.CreateTargetModSkill{
+	name = "#LuaWaruiAdditional",
+	residue_func = function(self, from)
+		return from:getMark("WaruiAdditional")
+	end
+}
+
+ShinkawaKyouni:addSkill(Urami)
+ShinkawaKyouni:addSkill(Warui)
+ShinkawaKyouni:addSkill(WaruiAdditional)
+extension:insertRelatedSkills("LuaWarui","#LuaWaruiAdditional")
+
+sgs.LoadTranslationTable{	
+	["ShinkawaKyouni"]="新川恭二",
+	["&ShinkawaKyouni"]="新川恭二",
+	["#ShinkawaKyouni"]="为虎作伥",
+	["designer:ShinkawaKyouni"]="Smwlover",
+	["cv:ShinkawaKyouni"]="花江夏树",
+	["illustrator:ShinkawaKyouni"]="官方",
+	
+	["LuaUrami"]="怀恨",
+	[":LuaUrami"]="<b>（怀恨在心）</b>每当你失去所有手牌后，你可以获得一名手牌数最多的角色的一张手牌。",
+	["@UramiChoose"]="你可以发动技能“怀恨在心”获得一名手牌数最多的角色的一张手牌",
+	["#UramiInvoke"]="%from 对 %to 发动了技能“%arg”",
+	["LuaWarui"]="作伥",
+	[":LuaWarui"]="<b>（为虎作伥）</b>每当其他角色于出牌阶段内使用的【杀】结算完毕后，若此【杀】没有造成伤害，你可以将一张牌交给该角色，然后令此回合内该角色使用【杀】的次数上限+1。",
+	["@WaruiGive"]="你可以发动“为虎作伥”交给 %src 一张手牌",
+	
+	["~ShinkawaKyouni"]=""
+}

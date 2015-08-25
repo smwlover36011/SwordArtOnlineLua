@@ -290,7 +290,7 @@ Mayou = sgs.CreateTriggerSkill{
 				log.from = sachi
 				log.arg = self:objectName()
 				room:sendLog(log)
-				
+				--Ask for discard:
 				if not room:askForCard(sachi, ".|.|.|hand", "@LuaMayou:::"..1, data, self:objectName()) then
 					local nullified_list = use.nullified_list
 					for _, p in sgs.qlist(use.to) do
@@ -1108,6 +1108,8 @@ BerserkerCard = sgs.CreateSkillCard{
 		return #targets == 1
 	end,
 	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source,"LuaBerserker")
+		room:broadcastSkillInvoke("LuaBerserker")
 		--Recover:
 		local target = targets[1]
 		local recover = sgs.RecoverStruct()
@@ -1145,7 +1147,7 @@ Berserker = sgs.CreateViewAsSkill{
 	name = "LuaBerserker",
 	n = 1,
 	view_filter = function(self, selected, to_select)
-		return #selected == 0 and to_select:isRed()
+		return #selected == 0 and to_select:isRed() and not sgs.Self:isJilei(to_select)
 	end,
 	view_as = function(self, cards)
 		if #cards == 1 then
@@ -1789,8 +1791,8 @@ sgs.LoadTranslationTable{
 	["&Alice"]="爱丽丝",
 	["#Alice"]="金色的骑士",
 	["designer:Alice"]="Smwlover",
-	["cv:Alice"]="无",
 	["illustrator:Alice"]="官方",
+	["cv:Alice"]="无",
 	
 	["LuaKouei"]="荣耀",
 	[":LuaKouei"]="<b>（荣耀之骑士）</b>每当你受到伤害后，你可以摸一张牌，然后展示所有手牌，若花色各不相同，你可以重复此流程。",
@@ -1799,4 +1801,139 @@ sgs.LoadTranslationTable{
 	[":LuaHanaben"]="<b>（繁花之舞）</b>每名角色的回合限一次，你可以将任意数量的花色各不相同的手牌当作【杀】使用，此【杀】的目标数量上限至少为X（X为这些牌的数量）。",
 	
 	["~Alice"]=""
+}
+
+--SAO-409 Eugeo
+Eugeo = sgs.General(extension,"Eugeo","sao","3",true)
+
+--Koori
+Koori = sgs.CreateMasochismSkill{
+	name = "LuaKoori",
+	on_damaged = function(self, player, damage)
+		local room = player:getRoom()
+		local targets = sgs.SPlayerList()
+		local list = room:getAlivePlayers()
+		for _,tar in sgs.qlist(list) do
+			if tar:objectName() ~= player:objectName() and not tar:isKongcheng() then
+				targets:append(tar)
+			end
+		end
+		--Choose a target:
+		if not player:isKongcheng() and not targets:isEmpty() then
+			local target = room:askForPlayerChosen(player, targets, self:objectName(), "@LuaKooriChoose", true, false)
+			if target then
+				local log = sgs.LogMessage()
+				log.type = "#HonpouInvoked"
+				log.from = player
+				log.to:append(target)
+				log.arg = self:objectName()
+				room:sendLog(log)
+				room:notifySkillInvoked(player,self:objectName())
+				room:broadcastSkillInvoke(self:objectName())
+				room:doAnimate(1, player:objectName(), target:objectName()) --Instruct line.
+				--Pindian:
+				local success = player:pindian(target, self:objectName(), nil)
+				if success then
+					target:drawCards(2)
+					target:turnOver()
+				else
+					player:drawCards(2)
+					player:turnOver()
+				end
+			end
+		end
+		return false
+	end
+}
+
+--Saki
+SakiCard = sgs.CreateSkillCard{
+	name = "SakiCard",
+	target_fixed = false,
+	will_throw = true,
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and not to_select:faceUp() and to_select:objectName() ~= player:objectName() and to_select:getMark("@kinshi") == 0
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source,"LuaSaki")
+		room:broadcastSkillInvoke("LuaSaki")
+		room:addPlayerMark(targets[1], "@kinshi")
+		room:setPlayerCardLimitation(targets[1], "use,response", ".|.|.|hand", false)
+		source:setTag("LuaSaki", sgs.QVariant("invoker"))
+	end
+}
+
+LuaSakiVS = sgs.CreateViewAsSkill{
+	name = "LuaSaki",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		return #selected == 0 and not to_select:isKindOf("BasicCard") and not sgs.Self:isJilei(to_select)
+	end,
+	view_as = function(self, cards)
+		if #cards == 1 then
+			local card = SakiCard:clone()
+			card:addSubcard(cards[1])
+			card:setSkillName(self:objectName())
+			return card
+		end
+		return nil
+	end,
+	enabled_at_play = function(self, player)
+		return player:canDiscard(player, "he") and not player:isNude()
+	end
+}
+
+Saki = sgs.CreateTriggerSkill{
+	name = "LuaSaki",
+	events = {sgs.EventPhaseChanging, sgs.Death},
+	view_as_skill = LuaSakiVS,
+	on_trigger = function(self, event, player, data)
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to ~= sgs.Player_NotActive then
+				return false
+			end
+		elseif event == sgs.Death then
+			local death = data:toDeath()
+			if death.who:objectName() ~= player:objectName() then
+				return false
+			end
+		end
+		local room = player:getRoom()
+		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+			if p:getMark("@kinshi") > 0 then
+				room:removePlayerCardLimitation(p, "use,response", ".|.|.|hand")
+				room:setPlayerMark(p, "@kinshi", 0)
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target:getTag("LuaSaki"):toString() == "invoker"
+	end
+}
+
+Eugeo:addSkill(Koori)
+Eugeo:addSkill(Saki)
+
+sgs.LoadTranslationTable{	
+	["Eugeo"]="尤吉欧",
+	["&Eugeo"]="尤吉欧",
+	["#Eugeo"]="悲情英雄",
+	["designer:Eugeo"]="Smwlover",
+	["illustrator:Eugeo"]="网络资源",
+	["cv:Eugeo"]="无",
+	
+	["LuaKoori"]="寒冰",
+	[":LuaKoori"]="<b>（冰之藤蔓）</b>每当你受到伤害后，你可以与一名其他角色拼点。若你赢，该角色摸两张牌并将武将牌翻面；若你没赢，你摸两张牌并将武将牌翻面。",
+	["@LuaKooriChoose"]="你可以发动技能“冰之藤蔓”选择一名角色与其拼点",
+	["LuaSaki"]="蔷薇",
+	[":LuaSaki"]="<b>（蔷薇之绽放）</b>出牌阶段，你可以弃置一张非基本牌，令一名武将牌背面朝上的其他角色无法使用或打出手牌，直到回合结束。",
+	["saki"]="蔷薇之绽放",
+	["@kinshi"]="禁止",
+	
+	["~Eugeo"]=""
 }

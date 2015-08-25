@@ -1909,6 +1909,7 @@ Saki = sgs.CreateTriggerSkill{
 				room:setPlayerMark(p, "@kinshi", 0)
 			end
 		end
+		player:removeTag("LuaSaki")
 		return false
 	end,
 	can_trigger = function(self, target)
@@ -1935,5 +1936,5 @@ sgs.LoadTranslationTable{
 	["saki"]="蔷薇之绽放",
 	["@kinshi"]="禁止",
 	
-	["~Eugeo"]=""
+	["~Eugeo"]="我的……剑，已经……折断了啊"
 }

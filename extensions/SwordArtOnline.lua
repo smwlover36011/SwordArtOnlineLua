@@ -16,6 +16,21 @@ sgs.LoadTranslationTable{
 	["swordartonline"] = "刀剑神域",
 }
 
+--Skill Anjiang and Synthesis
+SkillAnJiang = sgs.General(extension,"SAOSkillAnJiang","sao","5",true,true,true)
+Synthesis = sgs.CreateTriggerSkill{
+	name = "#LuaSynthesis",
+	events = {sgs.GameStart},
+	on_trigger = function(self, event, player, data)
+		player:gainMark("@synthesis", 1)
+		return false
+	end
+}
+SkillAnJiang:addSkill(Synthesis)
+sgs.LoadTranslationTable{
+	["@synthesis"]="整合",
+}
+
 --SAO-103 Lisbeth
 Lisbeth = sgs.General(extension,"Lisbeth","sao","3",false)
 
@@ -1671,10 +1686,10 @@ Hanaben = sgs.CreateViewAsSkill{
 		end
 	end,
 	enabled_at_play = function(self, player)
-		return sgs.Slash_IsAvailable(player)
+		return inSomebodysTurn(player) and not player:hasFlag("HanabenUsed") and not player:isKongcheng() and sgs.Slash_IsAvailable(player)
 	end, 
 	enabled_at_response = function(self, player, pattern)
-		return pattern == "slash"
+		return inSomebodysTurn(player) and not player:hasFlag("HanabenUsed") and not player:isKongcheng() and pattern == "slash"
 	end
 }
 
@@ -1686,6 +1701,39 @@ HanabenExtra = sgs.CreateTargetModSkill{
 			return number - 1
 		end
 		return 0
+	end
+}
+
+HanabenFlag = sgs.CreateTriggerSkill{
+	name = "#LuaHanabenFlag",
+	events = {sgs.CardUsed},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		if use.card:getSkillName() == "LuaHanaben" then
+			room:setPlayerFlag(player, "HanabenUsed")
+		end
+	end
+}
+
+HanabenClear = sgs.CreateTriggerSkill{
+	name = "#LuaHanabenClear",
+	events = {sgs.EventPhaseChanging},
+	on_trigger = function(self, event, player, data)
+		local change = data:toPhaseChange()
+		local room = player:getRoom()
+		if change.to == sgs.Player_NotActive then
+			--Clear Alice's "HanabenUsed" flag.
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:hasFlag("HanabenUsed") then
+					room:setPlayerFlag(p, "-HanabenUsed")
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
 	end
 }
 
@@ -1726,10 +1774,15 @@ Kouei = sgs.CreateMasochismSkill{
 	end
 }
 
+Alice:addSkill(Kouei)
 Alice:addSkill(Hanaben)
 Alice:addSkill(HanabenExtra)
-Alice:addSkill(Kouei)
+Alice:addSkill(HanabenFlag)
+Alice:addSkill(HanabenClear)
+Alice:addSkill("#LuaSynthesis")
 extension:insertRelatedSkills("LuaHanaben","#LuaHanabenExtra")
+extension:insertRelatedSkills("LuaHanaben","#LuaHanabenFlag")
+extension:insertRelatedSkills("LuaHanaben","#LuaHanabenClear")
 
 sgs.LoadTranslationTable{	
 	["Alice"]="爱丽丝·滋贝鲁库",
@@ -1739,11 +1792,11 @@ sgs.LoadTranslationTable{
 	["cv:Alice"]="无",
 	["illustrator:Alice"]="官方",
 	
-	["LuaHanaben"]="花舞",
-	[":LuaHanaben"]="<b>（繁花之舞）</b>你可以将任意数量的花色各不相同的手牌当作【杀】使用，此【杀】的目标数量上限至少为X（X为这些牌的数量）。",
 	["LuaKouei"]="荣耀",
 	[":LuaKouei"]="<b>（荣耀之骑士）</b>每当你受到伤害后，你可以摸一张牌，然后展示所有手牌，若花色各不相同，你可以重复此流程。",
 	["LuaKouei:draw"]="你可以发动技能“荣耀之骑士”摸一张牌并展示所有手牌",
+	["LuaHanaben"]="花舞",
+	[":LuaHanaben"]="<b>（繁花之舞）</b>每名角色的回合限一次，你可以将任意数量的花色各不相同的手牌当作【杀】使用，此【杀】的目标数量上限至少为X（X为这些牌的数量）。",
 	
 	["~Alice"]=""
 }

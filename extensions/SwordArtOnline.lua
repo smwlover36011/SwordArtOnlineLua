@@ -291,7 +291,7 @@ Mayou = sgs.CreateTriggerSkill{
 				log.arg = self:objectName()
 				room:sendLog(log)
 				--Ask for discard:
-				if not room:askForCard(sachi, ".|.|.|hand", "@LuaMayou:::"..1, data, self:objectName()) then
+				if not room:askForCard(sachi, ".|.|.|hand", "@LuaMayou:::"..1, data, self:objectName()) then --The influence of JiLei has already been considered.
 					local nullified_list = use.nullified_list
 					for _, p in sgs.qlist(use.to) do
 						table.insert(nullified_list, p:objectName())
@@ -1369,9 +1369,13 @@ FushokuCard = sgs.CreateSkillCard{
 		--Discard a handcard from dest.
 		if source:isAlive() and dest:isAlive() and source:canDiscard(dest, "h") then
 			local card_id = room:askForCardChosen(source, dest, "h", "LuaFushoku", false, sgs.Card_MethodDiscard)
-			room:throwCard(card_id, dest, source)
-			--Is the card a spade card?
 			local card = sgs.Sanguosha:getCard(card_id)
+			if not dest:isJilei(card) then
+				room:throwCard(card_id, dest, source)
+			else
+				room:showCard(dest, card_id)
+			end
+			--Is the card a spade card?
 			if card:getSuit() ~= sgs.Card_Spade then
 				room:damage(sgs.DamageStruct("LuaFushoku", source, dest))
 			end
@@ -1658,6 +1662,126 @@ sgs.LoadTranslationTable{
 	["~ShinkawaKyouni"]=""
 }
 
+--SAO-406 Lynel_Fizel
+Lynel_Fizel = sgs.General(extension,"Lynel_Fizel","sao","5",false)
+
+--Korosu
+Korosu = sgs.CreatePhaseChangeSkill{
+	name = "LuaKorosu",
+	frequency = sgs.Skill_Compulsory,
+	on_phasechange = function(self, player)
+		if player:getPhase() == sgs.Player_Finish then
+			local room = player:getRoom()
+			--sendLog:
+			local log = sgs.LogMessage()
+			log.type = "#TriggerSkill"
+			log.from = player
+			log.arg = self:objectName()
+			room:sendLog(log)
+			--showAllCards:
+			room:showAllCards(source)
+			local cards = source:getHandcards()
+			local blackCount = 0
+			local redCount = 0
+			for _, card in sgs.qlist(cards) do
+				if card:isRed() then
+					redCount = redCount + 1
+				else
+					blackCount = blackCount + 1
+				end
+			end
+			--If the number of red and black cards are not equal:
+			if redCount == blackCount then
+				player:drawCards(1)
+			else
+				room:loseHp(player)
+			end
+		end
+		return false
+	end
+}
+
+--Ikikaeru
+Ikikaeru = sgs.CreateTriggerSkill{
+	name = "LuaIkikaeru",
+	events = {sgs.Dying},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local dying = data:toDying()
+		local who = dying.who
+		if who:objectName() ~= player:objectName() then
+			return false
+		end
+		if player:askForSkillInvoke(self:objectName(), sgs.QVariant("recover")) then
+			room:loseMaxHp(player)
+			room:recover(player, sgs.RecoverStruct(player, nil, 1 - player:getHp()))
+		end
+		return false
+	end
+}
+
+--Akui
+AkuiCard = sgs.CreateSkillCard{
+	name = "AkuiCard",
+	target_fixed = false,
+	filter = function(self, targets, to_select, player)
+		if #targets ~= 0 then
+			return false
+		end
+		if to_select:isKongcheng() then
+			return false
+		end
+		--Consider the influence of JiLei:
+		if player:objectName() == to_select:objectName() then
+			local isAllJiLei = true
+			local cards = player:getHandcards()
+			for _, card in sgs.qlist(cards) do
+				if not player:isJilei(card) then
+					isAllJiLei = false
+					break
+				end
+			end
+			return not isAllJiLei
+		end
+		return true
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source,"LuaAkui")
+		room:broadcastSkillInvoke("LuaAkui")
+		if targets[1]:objectName() == source:objectName() then
+			
+		
+		
+		
+		
+		--[[
+		
+		room:addPlayerMark(targets[1], "@kinshi")
+		room:setPlayerCardLimitation(targets[1], "use,response", ".|.|.|hand", false)
+		--Set tag:
+		local playerData = sgs.QVariant()
+		playerData:setValue(source)
+		room:settag("LuaSakiInvoker", playerData)]]--
+	end
+}
+
+Akui = sgs.CreateZeroCardViewAsSkill{
+	name = "LuaAkui",
+	view_as = function()
+		return AkuiCard:clone()
+	end,
+	enabled_at_play = function(self, player)
+		return true
+	end
+}
+
+Lynel_Fizel:addSkill(Korosu)
+Lynel_Fizel:addSkill(Ikikaeru)
+Lynel_Fizel:addSkill("#LuaSynthesis")
+
 --SAO-407 Alice
 Alice = sgs.General(extension,"Alice","sao","3",false)
 
@@ -1862,7 +1986,10 @@ SakiCard = sgs.CreateSkillCard{
 		room:broadcastSkillInvoke("LuaSaki")
 		room:addPlayerMark(targets[1], "@kinshi")
 		room:setPlayerCardLimitation(targets[1], "use,response", ".|.|.|hand", false)
-		source:setTag("LuaSaki", sgs.QVariant("invoker"))
+		--Set tag:
+		local playerData = sgs.QVariant()
+		playerData:setValue(source)
+		room:settag("LuaSakiInvoker", playerData)
 	end
 }
 
@@ -1903,22 +2030,27 @@ Saki = sgs.CreateTriggerSkill{
 			end
 		end
 		local room = player:getRoom()
+		local sakiInvoker = room:getTag("LuaSakiInvoker"):toPlayer()
+		if not sakiInvoker or sakiInvoker:objectName() ~= player:objectName() then
+			return false
+		end
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 			if p:getMark("@kinshi") > 0 then
 				room:removePlayerCardLimitation(p, "use,response", ".|.|.|hand")
 				room:setPlayerMark(p, "@kinshi", 0)
 			end
 		end
-		player:removeTag("LuaSaki")
+		room:removeTag("LuaSakiInvoker")
 		return false
 	end,
 	can_trigger = function(self, target)
-		return target:getTag("LuaSaki"):toString() == "invoker"
+		return target
 	end
 }
 
 Eugeo:addSkill(Koori)
 Eugeo:addSkill(Saki)
+Eugeo:addSkill("#LuaSynthesis")
 
 sgs.LoadTranslationTable{	
 	["Eugeo"]="尤吉欧",

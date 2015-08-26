@@ -1678,9 +1678,11 @@ Korosu = sgs.CreatePhaseChangeSkill{
 			log.from = player
 			log.arg = self:objectName()
 			room:sendLog(log)
+			room:notifySkillInvoked(player,self:objectName())
+			room:broadcastSkillInvoke(self:objectName())
 			--showAllCards:
-			room:showAllCards(source)
-			local cards = source:getHandcards()
+			room:showAllCards(player)
+			local cards = player:getHandcards()
 			local blackCount = 0
 			local redCount = 0
 			for _, card in sgs.qlist(cards) do
@@ -1715,35 +1717,31 @@ Ikikaeru = sgs.CreateTriggerSkill{
 		if player:askForSkillInvoke(self:objectName(), sgs.QVariant("recover")) then
 			room:loseMaxHp(player)
 			room:recover(player, sgs.RecoverStruct(player, nil, 1 - player:getHp()))
+			room:setPlayerMark(player, "@limit", player:getMark("@limit")+1)
 		end
 		return false
 	end
 }
 
 --Akui
+function isAvailable(player, to_select)
+	if player:objectName() == to_select:objectName() then
+		local cards = player:getHandcards()
+		for _, card in sgs.qlist(cards) do
+			if not player:isJilei(card) then
+				return true
+			end
+		end
+		return false
+	end
+	return true
+end
+
 AkuiCard = sgs.CreateSkillCard{
 	name = "AkuiCard",
 	target_fixed = false,
 	filter = function(self, targets, to_select, player)
-		if #targets ~= 0 then
-			return false
-		end
-		if to_select:isKongcheng() then
-			return false
-		end
-		--Consider the influence of JiLei:
-		if player:objectName() == to_select:objectName() then
-			local isAllJiLei = true
-			local cards = player:getHandcards()
-			for _, card in sgs.qlist(cards) do
-				if not player:isJilei(card) then
-					isAllJiLei = false
-					break
-				end
-			end
-			return not isAllJiLei
-		end
-		return true
+		return #targets == 0 and not to_select:isKongcheng() and player:canDiscard(to_select, "h") and isAvailable(player, to_select)
 	end,
 	feasible = function(self, targets)
 		return #targets == 1
@@ -1751,36 +1749,70 @@ AkuiCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 		room:notifySkillInvoked(source,"LuaAkui")
 		room:broadcastSkillInvoke("LuaAkui")
+		room:setPlayerMark(source, "times", source:getMark("times")+1)
 		if targets[1]:objectName() == source:objectName() then
-			
-		
-		
-		
-		
-		--[[
-		
-		room:addPlayerMark(targets[1], "@kinshi")
-		room:setPlayerCardLimitation(targets[1], "use,response", ".|.|.|hand", false)
-		--Set tag:
-		local playerData = sgs.QVariant()
-		playerData:setValue(source)
-		room:settag("LuaSakiInvoker", playerData)]]--
+			room:askForDiscard(source, "LuaAkui", 1, 1, false, false) --Optional, include_equip
+		else
+			local card_id = room:askForCardChosen(source, targets[1], "h", "LuaAkui", false, sgs.Card_MethodDiscard)
+			local card = sgs.Sanguosha:getCard(card_id)
+			if not targets[1]:isJilei(card) then
+				room:throwCard(card_id, targets[1], source)
+			else
+				room:showCard(targets[1], card_id)
+			end
+		end
 	end
 }
 
-Akui = sgs.CreateZeroCardViewAsSkill{
+LuaAkuiVS = sgs.CreateZeroCardViewAsSkill{
 	name = "LuaAkui",
 	view_as = function()
 		return AkuiCard:clone()
 	end,
 	enabled_at_play = function(self, player)
-		return true
+		return player:getMark("times") < player:getMark("@limit")
+	end
+}
+
+Akui = sgs.CreateTriggerSkill{
+	name = "LuaAkui",
+	events = {sgs.EventPhaseChanging},
+	view_as_skill = LuaAkuiVS,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local change = data:toPhaseChange()
+		if change.to ~= sgs.Player_NotActive then
+			room:setPlayerMark(player, "times", 0)
+		end
+		return false
 	end
 }
 
 Lynel_Fizel:addSkill(Korosu)
 Lynel_Fizel:addSkill(Ikikaeru)
+Lynel_Fizel:addSkill(Akui)
 Lynel_Fizel:addSkill("#LuaSynthesis")
+
+sgs.LoadTranslationTable{	
+	["Lynel_Fizel"]="丽涅尔/菲洁尔",
+	["&Lynel_Fizel"]="双子骑士",
+	["#Lynel_Fizel"]="双子骑士",
+	["designer:Lynel_Fizel"]="Smwlover",
+	["illustrator:Lynel_Fizel"]="官方",
+	["cv:Lynel_Fizel"]="无",
+	
+	["LuaKorosu"]="残杀",
+	[":LuaKorosu"]="<b>（自相残杀）</b><font color=\"blue\"><b>锁定技，</b></font>结束阶段开始时，你须展示你的所有手牌，若其中黑色牌与红色牌的数量不相等，你失去1点体力，否则你摸一张牌。",
+	["LuaIkikaeru"]="复生",
+	[":LuaIkikaeru"]="每当你进入濒死状态时，你可以减少1点体力上限，然后将体力值回复至1点。",
+	["LuaIkikaeru:recover"]="你可以发动“死而复生”",
+	["@limit"]="发动次数",
+	["LuaAkui"]="恶意",
+	[":LuaAkui"]="出牌阶段，你可以弃置一名角色的一张手牌，每阶段限X次（X为本局游戏中你发动“死而复生”的次数）。",
+	["akui"]="幼小的恶意",
+
+	["~Lynel_Fizel"]=""
+}
 
 --SAO-407 Alice
 Alice = sgs.General(extension,"Alice","sao","3",false)

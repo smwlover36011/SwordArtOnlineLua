@@ -1717,7 +1717,7 @@ Ikikaeru = sgs.CreateTriggerSkill{
 		if player:askForSkillInvoke(self:objectName(), sgs.QVariant("recover")) then
 			room:loseMaxHp(player)
 			room:recover(player, sgs.RecoverStruct(player, nil, 1 - player:getHp()))
-			room:setPlayerMark(player, "@limit", player:getMark("@limit")+1)
+			room:setPlayerMark(player, "@limit_akui", player:getMark("@limit_akui")+1)
 		end
 		return false
 	end
@@ -1770,7 +1770,7 @@ LuaAkuiVS = sgs.CreateZeroCardViewAsSkill{
 		return AkuiCard:clone()
 	end,
 	enabled_at_play = function(self, player)
-		return player:getMark("times") < player:getMark("@limit")
+		return player:getMark("times") < player:getMark("@limit_akui")
 	end
 }
 
@@ -1806,7 +1806,7 @@ sgs.LoadTranslationTable{
 	["LuaIkikaeru"]="复生",
 	[":LuaIkikaeru"]="每当你进入濒死状态时，你可以减少1点体力上限，然后将体力值回复至1点。",
 	["LuaIkikaeru:recover"]="你可以发动“死而复生”",
-	["@limit"]="发动次数",
+	["@limit_akui"]="发动次数",
 	["LuaAkui"]="恶意",
 	[":LuaAkui"]="出牌阶段，你可以弃置一名角色的一张手牌，每阶段限X次（X为本局游戏中你发动“死而复生”的次数）。",
 	["akui"]="幼小的恶意",

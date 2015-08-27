@@ -2011,7 +2011,7 @@ Hoshishimo = sgs.CreateViewAsSkill{
 		return nil
 	end,
 	enabled_at_play = function(self, player)
-		return player:canDiscard(player, "he") and not player:hasUsed("#HoshishimoCard")
+		return player:canDiscard(player, "he") and not player:hasUsed("#HoshishimoCard") and player:isWounded()
 	end
 }
 

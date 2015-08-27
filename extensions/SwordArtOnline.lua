@@ -1959,6 +1959,80 @@ sgs.LoadTranslationTable{
 	["~Alice"]=""
 }
 
+--SAO-408 Aierduoliye
+Aierduoliye = sgs.General(extension,"Aierduoliye","sao","4",true)
+
+--Hoshishimo
+HoshishimoCard = sgs.CreateSkillCard{
+	name = "HoshishimoCard",
+	target_fixed = false,
+	will_throw = true,
+	filter = function(self, targets, to_select, player)
+		return #targets < player:getMaxHp() - player:getHp()
+	end,
+	feasible = function(self, targets)
+		return #targets > 0 and #targets <= sgs.Self:getMaxHp() - sgs.Self:getHp()
+	end,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source,"LuaHoshishimo")
+		room:broadcastSkillInvoke("LuaHoshishimo")
+		for i=1, #targets, 1 do
+			local dest = targets[i]
+			if dest:isChained() then
+				room:loseHp(dest)
+			else
+				local log = sgs.LogMessage()
+				log.type = "#HoshishimoChain"
+				log.to:append(dest)
+				room:sendLog(log)
+				--setChained:
+				dest:setChained(true)
+				room:broadcastProperty(dest, "chained")
+				room:setEmotion(dest, "chain")
+				room:getThread():trigger(sgs.ChainStateChanged, room, dest)
+			end
+		end
+	end
+}
+
+Hoshishimo = sgs.CreateViewAsSkill{
+	name = "LuaHoshishimo",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		return #selected == 0 and to_select:getSuit() == sgs.Card_Club and not sgs.Self:isJilei(to_select)
+	end,
+	view_as = function(self, cards)
+		if #cards == 1 then
+			local card = HoshishimoCard:clone()
+			card:addSubcard(cards[1])
+			card:setSkillName(self:objectName())
+			return card
+		end
+		return nil
+	end,
+	enabled_at_play = function(self, player)
+		return player:canDiscard(player, "he") and not player:hasUsed("#HoshishimoCard")
+	end
+}
+
+Aierduoliye:addSkill(Hoshishimo)
+
+sgs.LoadTranslationTable{	
+	["Aierduoliye"]="艾尔多利耶",
+	["&Aierduoliye"]="艾尔多利耶",
+	["#Aierduoliye"]="以身为盾",
+	["designer:Aierduoliye"]="Smwlover",
+	["illustrator:Aierduoliye"]="官方",
+	["cv:Aierduoliye"]="无",
+	
+	["LuaHoshishimo"]="霜鳞",
+	[":LuaHoshishimo"]="<b>（霜鳞鞭）</b><font color=\"green\"><b>阶段技，</b></font>你可以弃置一张梅花牌，将至多X名角色的武将牌横置（X为你已损失的体力值），若其中有角色的武将牌已横置，改为你令该角色失去1点体力。",
+	["#HoshishimoChain"]="%to 将武将牌横置",
+	["hoshishimo"]="霜鳞鞭",
+	
+	["~Aierduoliye"]=""
+}
+
 --SAO-409 Eugeo
 Eugeo = sgs.General(extension,"Eugeo","sao","3",true)
 

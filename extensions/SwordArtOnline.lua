@@ -1668,6 +1668,138 @@ sgs.LoadTranslationTable{
 	["~ShinkawaKyouni"]=""
 }
 
+--SAO-404 Fanatiou
+Fanatiou = sgs.General(extension,"Fanatiou","sao","4",false)
+
+--Sixuanjian
+SixuanjianCard = sgs.CreateSkillCard{
+	name = "SixuanjianCard",
+	target_fixed = false,
+	will_throw = true,
+	filter = function(self, targets, to_select)
+		return #targets == 0
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source,"LuaSixuanjian")
+		room:broadcastSkillInvoke("LuaSixuanjian")
+		local target = targets[1]
+		local players = sgs.SPlayerList()
+		local list = room:getAlivePlayers()
+		for _,tar in sgs.qlist(list) do
+			if target:objectName() ~= tar:objectName() and tar:inMyAttackRange(target) then
+				players:append(tar)
+			end
+		end
+		--Use slash to target?
+		if players:isEmpty() then
+			return
+		end
+		for _,tar in sgs.qlist(players) do
+			if not tar:isAlive() or not target:isAlive() or not room:askForUseSlashTo(tar, target, "@SixuanjianSlash:"..target:objectName()..":"..source:objectName()) then
+				source:drawCards(1)
+			end
+		end
+	end
+}
+
+Sixuanjian = sgs.CreateViewAsSkill{
+	name = "LuaSixuanjian",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		return #selected == 0 and to_select:isKindOf("EquipCard") and not sgs.Self:isJilei(to_select)
+	end,
+	view_as = function(self, cards)
+		if #cards == 1 then
+			local card = SixuanjianCard:clone()
+			card:addSubcard(cards[1])
+			card:setSkillName(self:objectName())
+			return card
+		end
+		return nil
+	end,
+	enabled_at_play = function(self, player)
+		return player:canDiscard(player, "he") and not player:hasUsed("#SixuanjianCard")
+	end
+}
+
+--Tianchuanjian
+TianchuanCard = sgs.CreateSkillCard{
+	name = "LuaTianchuanjian",
+	target_fixed = true,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source, "LuaTianchuanjian")
+		room:broadcastSkillInvoke("LuaTianchuanjian")
+		room:doLightbox("Tianchuan$", 2500)
+		source:loseMark("@tianchuan")
+		--Get the number of players:
+		local num = room:alivePlayerCount()
+		for i=1, num, 1 do
+			--Choose a random alive player:
+			local list = room:getAlivePlayers()
+			local length = list:length()
+			local randomNum = math.random(0, length-1)
+			local victim = list:at(randomNum)
+			--Instruct line and deal 1 damage:
+			if source:isAlive() then
+				room:doAnimate(1, source:objectName(), victim:objectName()) --Instruct line.
+			end
+			room:damage(sgs.DamageStruct("LuaTianchuanjian", source, victim))
+			room:getThread():delay(1500)
+		end
+	end
+}
+
+LuaTianchuanjianVS = sgs.CreateViewAsSkill{
+	name = "LuaTianchuanjian",
+	n = 0,
+	view_as = function(self, cards)
+		local card = TianchuanCard:clone()
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("@tianchuan") >= 1
+	end
+}
+
+Tianchuanjian = sgs.CreateTriggerSkill{
+	name = "LuaTianchuanjian" ,
+	frequency = sgs.Skill_Limited,
+	limit_mark = "@tianchuan",
+	events = {},
+	view_as_skill = LuaTianchuanjianVS,
+	on_trigger = function()
+		return false
+	end
+}
+
+Fanatiou:addSkill(Sixuanjian)
+Fanatiou:addSkill(Tianchuanjian)
+Fanatiou:addSkill("#LuaSynthesis")
+
+sgs.LoadTranslationTable{	
+	["Fanatiou"]="法娜提欧",
+	["&Fanatiou"]="法娜提欧",
+	["#Fanatiou"]="铿锵玫瑰",
+	["designer:Fanatiou"]="Smwlover",
+	["illustrator:Fanatiou"]="官方",
+	["cv:Fanatiou"]="无",
+	
+	["LuaSixuanjian"]="四旋",
+	[":LuaSixuanjian"]="<b>（四旋剑）</b><font color=\"green\"><b>阶段技，</b></font>你可以弃置一张装备牌并选择一名角色，令攻击范围内含有该角色的所有角色（该角色除外）依次选择一项：对该角色使用一张【杀】（不计入使用次数限制）；或者令你摸一张牌。",
+	["sixuanjian"]="四旋剑",
+	["@SixuanjianSlash"]="你可以对 %src 使用一张【杀】，或者令 %dest 摸一张牌",
+	["LuaTianchuanjian"]="天穿",
+	[":LuaTianchuanjian"]="<b>（天穿剑）</b><font color=\"red\"><b>限定技，</b></font>出牌阶段，你可以将以下流程重复X次（X为场上角色数且至多为5）：随机选择一名角色并对其造成1点伤害。",
+	["@tianchuan"]="天穿",
+	["luatianchuanjian"]="天穿剑",
+	["Tianchuan$"]="image=image/animate/Fanatiou.png",
+	
+	["~Fanatiou"]=""
+}
+	
 --SAO-406 Lynel_Fizel
 Lynel_Fizel = sgs.General(extension,"Lynel_Fizel","sao","5",false)
 

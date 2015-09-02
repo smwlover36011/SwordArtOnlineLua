@@ -375,11 +375,11 @@ TakushiDraw = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		local use = data:toCardUse()
 		if use.card:isKindOf("Slash") then
+			--Find sachi:
 			local sachi = room:findPlayerBySkillName(self:objectName())
 			if not sachi or not sachi:isAlive() then
 				return false
 			end
-			
 			--sendLog:
 			local log = sgs.LogMessage()
 			log.type = "#TriggerSkill"
@@ -463,6 +463,7 @@ Kanshin = sgs.CreateTriggerSkill{
 	end,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
+		--Find yui:
 		local yui = room:findPlayerBySkillName(self:objectName())
 		if not yui or not yui:isAlive() then
 			return false
@@ -1283,6 +1284,7 @@ Kendou = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		local use = data:toCardUse()
 		if use.card:isKindOf("EquipCard") then
+			--Find Leafa:
 			local leafa = room:findPlayerBySkillName(self:objectName())
 			if not leafa or not leafa:isAlive() or leafa:objectName() == player:objectName() then
 				return false
@@ -1666,6 +1668,116 @@ sgs.LoadTranslationTable{
 	["@WaruiGive"]="你可以发动“为虎作伥”交给 %src 一张手牌",
 	
 	["~ShinkawaKyouni"]=""
+}
+
+--SAO-402 Cardinal
+Cardinal = sgs.General(extension,"Cardinal","sao","3",false)
+
+--Shujin
+Shujin = sgs.CreateTriggerSkill{
+	name = "LuaShujin",
+	events = {sgs.Dying},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local dying = data:toDying()
+		local who = dying.who
+		if who:objectName() ~= player:objectName() then
+			return false
+		end
+		if player:askForSkillInvoke(self:objectName(), sgs.QVariant("draw")) then
+			player:drawCards(2)
+			player:turnOver()
+		end
+		return false
+	end
+}
+
+--Oshie
+Oshie = sgs.CreateTriggerSkill{
+	name = "LuaOshie",
+	events = {sgs.EventPhaseChanging, sgs.EventPhaseStart, sgs.PreCardUsed},
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self, event, player, data) 
+		local room = player:getRoom()
+		if event == sgs.PreCardUsed then
+			if player:getPhase() ~= sgs.Player_NotActive then
+				local card = data:toCardUse().card
+				if card and card:isKindOf("TrickCard") then
+					room:setPlayerFlag(player, "TrickUsed")
+				end
+			end
+		elseif event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive then
+				room:setPlayerFlag(player, "-TrickUsed")
+			end
+		elseif event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Finish then
+				if not player:hasFlag("TrickUsed") then
+					--Find Cardinal:
+					local cardinal = room:findPlayerBySkillName(self:objectName())
+					if not cardinal or not cardinal:isAlive() then
+						return false
+					end
+					if cardinal:askForSkillInvoke(self:objectName(), sgs.QVariant("draw:"..player:objectName())) then
+						--Get a random trick card from the discard pile:
+						local discardPile = room:getDiscardPile()
+						local trickList = sgs.IntList()
+						for _,id in sgs.qlist(discardPile) do
+							local card = sgs.Sanguosha:getCard(id)
+							if card:isKindOf("TrickCard") then
+								trickList:append(id)
+							end
+						end
+						if trickList:isEmpty() then
+							return false
+						end
+						local randomNum = math.random(0, trickList:length()-1)
+						local chosenID = trickList:at(randomNum)
+						local chosenCard = sgs.Sanguosha:getCard(chosenID)
+						local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+						dummy:addSubcard(chosenID)
+						player:obtainCard(dummy)
+						--Player can use this card immediately:
+						if chosenCard:objectName() ~= "nullification" then
+							room:askForUseCard(player, chosenID, "@LuaOshie:::"..chosenCard:objectName(), -1, sgs.Card_MethodUse)
+						end
+						--[[
+						About the function "askForUseCard":
+						const Card *askForUseCard(ServerPlayer *player, const char *pattern, const char *prompt, int notice_index = -1, Card::HandlingMethod method = Card::MethodUse, bool addHistory = true);
+						About the variable "pattern":
+						Please refer to src/package/exppattern.cpp.
+						]]
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+
+Cardinal:addSkill(Shujin)
+Cardinal:addSkill(Oshie)
+
+sgs.LoadTranslationTable{	
+	["Cardinal"]="卡迪纳尔",
+	["&Cardinal"]="卡迪纳尔",
+	["#Cardinal"]="小贤者",
+	["designer:Cardinal"]="Smwlover",
+	["illustrator:Cardinal"]="官方",
+	["cv:Cardinal"]="无",
+	
+	["LuaShujin"]="密室",
+	[":LuaShujin"]="<b>（密室的主人）</b>每当你进入濒死状态时，你可以摸两张牌，然后将武将牌翻面。",
+	["LuaShujin:draw"]="你可以发动技能“密室的主人”",
+	["LuaOshie"]="教诲",
+	[":LuaOshie"]="<b>（贤者的教诲）</b>一名角色的结束阶段开始时，若此回合内该角色没有使用过锦囊牌，你可以令该角色从弃牌堆中随机获得一张锦囊牌，然后该角色可以使用此牌。",
+	["LuaOshie:draw"]="你可以对 %src 发动技能“贤者的教诲”",
+	["@LuaOshie"]="你可以使用此【%arg】",
+	
+	["~Cardinal"]=""
 }
 
 --SAO-404 Fanatiou

@@ -1834,9 +1834,100 @@ Kumiai = sgs.CreateTriggerSkill{
 }
 
 --Saikou
+SaikouCard = sgs.CreateSkillCard{
+	name = "SaikouCard",
+	target_fixed = false,
+	will_throw = true,
+	filter = function(self, targets, to_select, player)
+		local availableTargets = player:property("available_targets"):toString():split("+")
+		return #targets == 0 and table.contains(availableTargets, to_select:objectName())
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source,"LuaSaikou")
+		room:broadcastSkillInvoke("LuaSaikou")
+		room:setPlayerFlag(targets[1],"slashTarget")
+	end
+}
 
+LuaSaikouVS = sgs.CreateViewAsSkill{
+	name = "LuaSaikou",
+	response_pattern = "@@LuaSaikou",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		return #selected == 0 and not sgs.Self:isJilei(to_select)
+	end,
+	view_as = function(self, cards)
+		if #cards == 1 then
+			local card = SaikouCard:clone()
+			card:addSubcard(cards[1])
+			card:setSkillName("LuaSaikou")
+			return card
+		end
+		return nil
+	end
+}
+
+Saikou = sgs.CreateTriggerSkill{
+	name = "LuaSaikou",
+	events = {sgs.CardUsed},
+	view_as_skill = LuaSaikouVS,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		if use.card:isKindOf("Slash") and player:getMark("@synthesis") > 0 then
+			local administrator = room:findPlayerBySkillName(self:objectName())
+			if not administrator or not administrator:isAlive() or player:objectName() == administrator:objectName() or administrator:isNude() or not administrator:canDiscard(administrator, "he") then
+				return false
+			end
+			local available_targets = sgs.SPlayerList()
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if not use.to:contains(p) and not room:isProhibited(player, p, use.card) and use.card:targetFilter(sgs.PlayerList(), p, player) then
+					available_targets:append(p)
+				end
+			end
+			if not available_targets:isEmpty() then
+				--Transform qlist into table:
+				local targets = {}
+				for _, t in sgs.qlist(available_targets) do
+					table.insert(targets, t:objectName())
+				end
+				room:setPlayerProperty(administrator, "available_targets", sgs.QVariant(table.concat(targets, "+")))
+				room:askForUseCard(administrator, "@@LuaSaikou", "@LuaSaikou:"..player:objectName())
+				room:setPlayerProperty(administrator, "available_targets", sgs.QVariant(""))
+				--Find the player with flag "slashTarget"
+				local tar = nil
+				for _, p in sgs.qlist(room:getAlivePlayers()) do
+					if p:hasFlag("slashTarget") then
+						room:setPlayerFlag(p, "-slashTarget")
+						tar = p
+						break
+					end
+				end
+				if tar then
+					use.to:append(tar)
+					room:sortByActionOrder(use.to)
+					data:setValue(use)
+					--sendLog
+					local log = sgs.LogMessage()
+					log.type = "#SaikouExtra"
+					log.to:append(tar)
+					log.arg = "slash"
+					room:sendLog(log)
+				end
+			end
+		end
+		return false
+	end
+}
 
 Administrator:addSkill(Fuuin)
+Administrator:addSkill(Saikou)
 Administrator:addSkill(Kumiai)
 SkillAnJiang:addSkill(FuuinToppa)
 local skill=sgs.Sanguosha:getSkill("#LuaFuuinAttach")
@@ -1865,6 +1956,12 @@ sgs.LoadTranslationTable{
 	["luakumiai"]="整合秘仪",
 	["@LuaKumiai"]="你可以对一名其他角色发动技能“整合秘仪”",
 	["~LuaKumiai"]="选择一名角色→点击“确定”",
+	["LuaSaikou"]="最高",
+	[":LuaSaikou"]="<b>（最高祭司）</b>每当一名<b>整合骑士</b>使用【杀】时，你可以弃置一张牌，然后为此【杀】额外选择一名合理的目标（有距离限制）。",
+	["@LuaSaikou"]="你可以为 %src 使用的【杀】额外选择一个目标",
+	["~LuaSaikou"]="选择要弃置的牌→选择额外的目标→点击“确定”",
+	["saikou"]="最高祭司",
+	["#SaikouExtra"]="%to 被指定为此【%arg】的额外目标",
 
 	["~Administrator"]=""
 }

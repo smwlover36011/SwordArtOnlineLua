@@ -5,7 +5,7 @@ extension=sgs.Package("swordartonline")
 
 --增加SAO势力
 do
-    require "lua.config" 
+    require "lua.config"
 	local config = config
 	local kingdoms = config.kingdoms
 	table.insert(kingdoms,"sao")
@@ -69,8 +69,8 @@ SoubiCard = sgs.CreateSkillCard{
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
 	filter = function(self, targets, to_select, lisbeth)
-		if #targets ~= 0 or to_select:objectName() == lisbeth:objectName() then 
-			return false 
+		if #targets ~= 0 or to_select:objectName() == lisbeth:objectName() then
+			return false
 		end
 		local card = sgs.Sanguosha:getCard(self:getSubcards():first())
 		local equip = card:getRealCard():toEquipCard()
@@ -86,14 +86,14 @@ SoubiCard = sgs.CreateSkillCard{
 		local room = lisbeth:getRoom()
 		room:notifySkillInvoked(lisbeth,"LuaSoubi")
 		room:broadcastSkillInvoke("LuaSoubi")
-		
+
 		room:moveCardTo(self, lisbeth, dist, sgs.Player_PlaceEquip, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, lisbeth:objectName(), "soubi", ""))
 		room:setPlayerMark(lisbeth, "additionalSize", dist:getEquips():length())
 	end
 }
 
 Soubi = sgs.CreateOneCardViewAsSkill{
-	name = "LuaSoubi",	
+	name = "LuaSoubi",
 	filter_pattern = "EquipCard|.|.|.",
 	view_as = function(self, card)
 		local soubiCard = SoubiCard:clone()
@@ -129,7 +129,7 @@ SoubiTrigger=sgs.CreateTriggerSkill{
 			if mark == 0 then
 				return false
 			end
-			
+
 			room:notifySkillInvoked(player,"LuaSoubi")
 			room:broadcastSkillInvoke("LuaSoubi")
 			local log = sgs.LogMessage()
@@ -152,14 +152,14 @@ Lisbeth:addSkill(SoubiTrigger)
 extension:insertRelatedSkills("LuaSoubi","#LuaSoubiMaxcard")
 extension:insertRelatedSkills("LuaSoubi","#LuaSoubiTrigger")
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Lisbeth"]="莉兹贝特",
 	["&Lisbeth"]="莉兹",
 	["#Lisbeth"]="锻造师",
 	["designer:Lisbeth"]="Smwlover",
 	["cv:Lisbeth"]="高垣彩阳",
 	["illustrator:Lisbeth"]="Pixiv=49511537",
-	
+
 	["LuaOndo"]="温度",
 	[":LuaOndo"]="<b>（心的温度）</b>每当你受到伤害后，你可以令伤害来源展示所有手牌，其中每有一张红色牌，你摸一张牌（至多五张）。",
 	["LuaOndo:draw"]="你可以发动技能“心的温度”令 %src 展示手牌",
@@ -167,7 +167,7 @@ sgs.LoadTranslationTable{
 	[":LuaSoubi"]="<b>（装备锻冶）</b><font color=\"green\"><b>阶段技，</b></font>你可以将一张装备牌置于一名其他角色的装备区中，然后令你的手牌上限+X（X为该角色装备区中牌的数量），直到回合结束。",
 	["#SoubiMaxcard"]="%from 的武将技能“%arg”被触发，手牌上限增加 %arg2",
 	["soubi"]="装备锻冶",
-	
+
 	["~Lisbeth"]=""
 }
 
@@ -216,7 +216,7 @@ GenkiCard = sgs.CreateSkillCard{
 	end,
 	feasible = function(self, targets)
 		return #targets > 0 and #targets <= sgs.Self:getHp()
-	end,	
+	end,
 	on_use = function(self, room, source, targets)
 		room:notifySkillInvoked(source,"LuaGenki")
 		room:broadcastSkillInvoke("LuaGenki")
@@ -250,14 +250,14 @@ Genki = sgs.CreateTriggerSkill{
 Silica:addSkill(Mamori)
 Silica:addSkill(Genki)
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Silica"]="西莉卡",
 	["&Silica"]="西莉卡",
 	["#Silica"]="龙使",
 	["designer:Silica"]="Smwlover",
 	["cv:Silica"]="日高里菜",
 	["illustrator:Silica"]="Pixiv=30844223",
-	
+
 	["LuaMamori"]="守护",
 	[":LuaMamori"]="<b>（毕娜的守护）</b>一名角色的准备阶段开始时，若你已受伤，你可以进行一次判定，若判定结果为红桃，你回复1点体力。",
 	["LuaMamori:recover"]="你可以发动技能“毕娜的守护”",
@@ -266,7 +266,7 @@ sgs.LoadTranslationTable{
 	["luagenki"]="元气偶像",
 	["@LuaGenki"]="你可以对至多 %arg 名角色发动技能“元气偶像”",
 	["~LuaGenki"]="选择目标角色→点击“确定”",
-	
+
 	["~Silica"]=""
 }
 
@@ -339,7 +339,7 @@ TakushiCard = sgs.CreateSkillCard{
 		room:notifySkillInvoked(source, "LuaTakushi")
 		room:broadcastSkillInvoke("LuaTakushi")
 		room:doLightbox("Takushi$", 2500)
-	
+
 		source:loseMark("@takushi")
 		targets[1]:gainMark("@takushi_target")
 	end
@@ -403,14 +403,14 @@ Sachi:addSkill(Takushi)
 Sachi:addSkill(TakushiDraw)
 extension:insertRelatedSkills("LuaTakushi","#LuaTakushiDraw")
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Sachi"]="幸",
 	["&Sachi"]="幸",
 	["#Sachi"]="逝去的温柔",
 	["designer:Sachi"]="Smwlover",
 	["cv:Sachi"]="早见沙织",
 	["illustrator:Sachi"]="Pixiv=46959959",
-	
+
 	["LuaMayou"]="徘徊",
 	[":LuaMayou"]="<b>（徘徊歧路）</b><font color=\"blue\"><b>锁定技，</b></font>每当你使用【杀】指定目标后，你须弃置一张手牌，否则此【杀】对目标角色无效。",
 	["@LuaMayou"]="你需要弃置 %arg 张手牌",
@@ -423,7 +423,7 @@ sgs.LoadTranslationTable{
 	["@takushi_target"]="寄托目标",
 	["luatakushi"]="心灵寄托",
 	["Takushi$"]="image=image/animate/Sachi.png",
-	
+
 	["~Sachi"]="谢谢你，再见……"
 }
 
@@ -560,14 +560,14 @@ Yui:addSkill(Tamotsu)
 Yui:addSkill(Kanshin)
 Yui:addSkill(Yobu)
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Yui"]="结衣",
 	["&Yui"]="结衣",
 	["#Yui"]="MHCP001",
 	["designer:Yui"]="Smwlover",
 	["cv:Yui"]="伊藤加奈惠",
 	["illustrator:Yui"]="Pixiv=32238450",
-	
+
 	["LuaTamotsu"]="保护",
 	[":LuaTamotsu"]="<b>（系统保护）</b><font color=\"blue\"><b>锁定技，</b></font>每当你受到属性伤害时，防止此伤害。",
 	["#TamotsuPrevented"]="%from 的武将技能“%arg”被触发，防止了 %arg2 点伤害",
@@ -579,7 +579,7 @@ sgs.LoadTranslationTable{
 	["luayobu"]="神器召唤",
 	["@yobu"]="召唤",
 	["Yobu$"]="image=image/animate/Yui.png",
-	
+
 	["~Yui"]=""
 }
 --SAO-108 Klein
@@ -694,19 +694,19 @@ Klein:addSkill(Honpou)
 Klein:addSkill(HonpouClear)
 extension:insertRelatedSkills("LuaHonpou","#LuaHonpouClear")
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Klein"]="克莱因",
 	["&Klein"]="克莱因",
 	["#Klein"]="武士之风",
 	["designer:Klein"]="Smwlover",
 	["cv:Klein"]="平田广明",
 	["illustrator:Klein"]="Pixiv=34275976",
-	
+
 	["LuaHonpou"]="豪情",
 	[":LuaHonpou"]="<b>（豪情烈胆）</b>每名角色的回合限一次，每当你需要使用【酒】时，你可以与一名其他角色拼点。若你赢，视为你使用了一张【酒】；若你没赢且此时在你的出牌阶段内，你无法使用【杀】直到回合结束。",
 	["@LuaHonpouChoose"]="请选择一名角色与其拼点",
 	["#HonpouInvoked"]="%from 发动技能“%arg”对 %to 进行拼点",
-	
+
 	["~Klein"]=""
 }
 
@@ -805,7 +805,7 @@ LuaBouekiVS = sgs.CreateViewAsSkill{
 		return not player:hasUsed("#BouekiCard")
 	end,
 	enabled_at_response = function(self, player, pattern)
-		return pattern == "@@LuaBoueki!"  
+		return pattern == "@@LuaBoueki!"
 	end
 }
 
@@ -880,21 +880,21 @@ Boueki = sgs.CreateTriggerSkill{
 
 Agil:addSkill(Boueki)
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Agil"]="艾基尔",
 	["&Agil"]="艾基尔",
 	["#Agil"]="道具商人",
 	["designer:Agil"]="Smwlover",
 	["cv:Agil"]="安元洋贵",
 	["illustrator:Agil"]="官方",
-	
+
 	["LuaBoueki"]="精明",
 	[":LuaBoueki"]="<b>（精明的商人）</b><font color=\"green\"><b>阶段技，</b></font>你可以展示一张红色手牌并选择一名手牌数不小于你的其他角色，令该角色选择任意数量的点数之和不小于X的手牌（不足则全部选择，X为你展示的牌的点数），然后将这些牌与你展示的牌交换。",
 	["boueki"]="精明的商人",
 	["@LuaBoueki"]="请选择任意数量的点数之和不小于 %arg 的手牌，或者你的全部手牌",
 	["~LuaBoueki"]="选择手牌→点击“确定”",
 	["bouekigive"]="支付费用",
-	
+
 	["~Agil"]=""
 }
 
@@ -936,7 +936,7 @@ NikushimiCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 		room:notifySkillInvoked(source,"LuaNikushimi")
 		room:broadcastSkillInvoke("LuaNikushimi")
-	
+
 		local card = self:getSubcards():first()
 		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", self:objectName(), "")
 		room:throwCard(sgs.Sanguosha:getCard(card), reason, nil)
@@ -997,14 +997,14 @@ Kuradeel:addSkill(Nikushimi)
 Kuradeel:addSkill(NikushimiAddPile)
 extension:insertRelatedSkills("LuaNikushimi","#LuaNikushimiAddPile")
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Kuradeel"]="克拉帝尔",
 	["&Kuradeel"]="克拉帝尔",
 	["#Kuradeel"]="深仇大恨",
 	["designer:Kuradeel"]="Smwlover",
 	["cv:Kuradeel"]="游佐浩二",
 	["illustrator:Kuradeel"]="官方",
-	
+
 	["LuaNikushimi"]="仇恨",
 	[":LuaNikushimi"]="<b>（不共戴天）</b>每当你受到伤害后，你可以将牌堆顶的一张牌置于武将牌上，称为“仇”；每当你使用【杀】对目标角色造成伤害时，你可以将一张“仇”置入弃牌堆，令此伤害+1。",
 	["LuaNikushimi:addPile"]="你可以发动技能“不共戴天”",
@@ -1015,7 +1015,7 @@ sgs.LoadTranslationTable{
 	["LuaBoukun"]="狂暴",
 	[":LuaBoukun"]="<b>（暴君之龙）</b>每当其他角色因受到你使用【杀】造成的伤害而进入濒死状态时，你可以摸一张牌。",
 	["LuaBoukun:draw"]="你可以发动“暴君之龙”摸一张牌",
-	
+
 	["~Kuradeel"]=""
 }
 
@@ -1025,7 +1025,7 @@ KiritoALO = sgs.General(extension,"KiritoALO","sao","4",true)
 --Rengeki
 Rengeki = sgs.CreateTriggerSkill{
 	name = "LuaRengeki",
-	frequency = sgs.Skill_Frequent, 
+	frequency = sgs.Skill_Frequent,
 	priority = -100,
 	events = {sgs.PreDamageDone, sgs.EventPhaseStart, sgs.EventPhaseEnd},
 	on_trigger = function(self, event, player, data)
@@ -1067,29 +1067,29 @@ Rengeki = sgs.CreateTriggerSkill{
 		end
 		return false
 	end,
-	can_trigger = function(self, target)	
+	can_trigger = function(self, target)
 		return target and target:isAlive()
 	end
 }
 
 KiritoALO:addSkill(Rengeki)
-	
-sgs.LoadTranslationTable{	
+
+sgs.LoadTranslationTable{
 	["KiritoALO"]="桐人ALO",
 	["&KiritoALO"]="桐人",
 	["#KiritoALO"]="黑色剑士",
 	["designer:KiritoALO"]="Smwlover",
 	["cv:KiritoALO"]="松冈祯丞",
 	["illustrator:KiritoALO"]="Pixiv=45122640",
-	
+
 	["LuaRengeki"]="连携",
 	[":LuaRengeki"]="<b>（剑技连携）</b>出牌阶段结束后，若本阶段内你造成了至少X点伤害，你可以摸X张牌，然后执行一个额外的出牌阶段（X为本回合内你执行过的出牌阶段数量）。",
 	["LuaRengeki:extra"]="你可以发动技能“剑技连携”进行一个额外的出牌阶段",
 	["#RengekiExtra"]="%from 进行一个额外的 %arg 阶段",
 	["@phaseNum"]="阶段",
-	
+
 	["~KiritoALO"]=""
-}	
+}
 
 --SAO-202 Asuna(ALO)
 AsunaALO = sgs.General(extension,"AsunaALO","sao","3",false)
@@ -1209,14 +1209,14 @@ Mizuiro = sgs.CreateTriggerSkill{
 AsunaALO:addSkill(Berserker)
 AsunaALO:addSkill(Mizuiro)
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["AsunaALO"]="亚丝娜ALO",
 	["&AsunaALO"]="亚丝娜",
 	["#AsunaALO"]="狂暴补师",
 	["designer:AsunaALO"]="Smwlover",
 	["cv:AsunaALO"]="户松遥",
 	["illustrator:AsunaALO"]="Pixiv=45620938",
-	
+
 	["LuaBerserker"]="补师",
 	[":LuaBerserker"]="<b>（狂暴补师）</b><font color=\"green\"><b>阶段技，</b></font>你可以弃置一张红色牌，令一名已受伤的角色回复1点体力，然后若该角色仍处于受伤状态，你可以视为对一名其他角色使用了一张【杀】。",
 	["berserker"]="狂暴补师",
@@ -1225,7 +1225,7 @@ sgs.LoadTranslationTable{
 	[":LuaMizuiro"]="<b>（水色屏障）</b>每当一名距离不大于1的角色成为黑色非延时类锦囊牌的目标后，你可以令此牌对该角色无效。",
 	["LuaMizuiro:prevent"]="你可以对 %src 发动技能“水色屏障”",
 	["#MizuiroPrevent"]="%from 使用的【%arg】对 %to 无效",
-	
+
 	["~AsunaALO"]=""
 }
 
@@ -1319,14 +1319,14 @@ Kendou = sgs.CreateTriggerSkill{
 Leafa:addSkill(Mimamoru)
 Leafa:addSkill(Kendou)
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Leafa"]="莉法",
 	["&Leafa"]="莉法",
 	["#Leafa"]="绿之剑士",
 	["designer:Leafa"]="Smwlover",
 	["cv:Leafa"]="竹达彩奈",
 	["illustrator:Leafa"]="Pixiv=31393729",
-	
+
 	["LuaMimamoru"]="守望",
 	[":LuaMimamoru"]="<b>（守望的心）</b><font color=\"green\"><b>阶段技，</b></font>你可以将一张红桃牌交给一名其他角色，令其回复1点体力。",
 	["mimamoru"]="守望的心",
@@ -1335,7 +1335,7 @@ sgs.LoadTranslationTable{
 	["draw_None"]="不发动",
 	["draw_Self"]="令你摸一张牌",
 	["draw_Other"]="令该角色摸一张牌",
-	
+
 	["~Leafa"]=""
 }
 
@@ -1412,20 +1412,20 @@ Fushoku = sgs.CreateViewAsSkill{
 Obeiron:addSkill(Akuma)
 Obeiron:addSkill(Fushoku)
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Obeiron"]="奥伯龙",
 	["&Obeiron"]="奥伯龙",
 	["#Obeiron"]="精灵王",
 	["designer:Obeiron"]="Smwlover",
 	["cv:Obeiron"]="子安武人",
 	["illustrator:Obeiron"]="官方",
-	
+
 	["LuaAkuma"]="恶毒",
 	[":LuaAkuma"]="<b>（恶毒之心）</b><font color=\"blue\"><b>锁定技，</b></font>你的红桃牌均视为黑桃牌。",
 	["LuaFushoku"]="侵蚀",
 	[":LuaFushoku"]="<b>（心智侵蚀）</b><font color=\"green\"><b>阶段技，</b></font>你可以将一张黑桃牌交给一名其他角色，然后弃置该角色的一张手牌，若此牌不为黑桃，你对该角色造成1点伤害。",
 	["fushoku"]="心智侵蚀",
-	
+
 	["~Obeiron"]=""
 }
 
@@ -1493,14 +1493,14 @@ DeathGun:addSkill(ToumeiTrigger)
 DeathGun:addSkill(Maboroshi)
 extension:insertRelatedSkills("LuaToumei","#LuaToumeiTrigger")
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["DeathGun"]="新川昌一",
 	["&DeathGun"]="新川昌一",
 	["#DeathGun"]="死枪",
 	["designer:DeathGun"]="Smwlover",
 	["cv:DeathGun"]="大原崇",
 	["illustrator:DeathGun"]="官方",
-	
+
 	["LuaToumei"]="隐身",
 	[":LuaToumei"]="<b>（隐身斗篷）</b><font color=\"blue\"><b>锁定技，</b></font>你无法成为黑色【杀】或黑色锦囊牌的目标，直到你的第一个回合开始。",
 	["@toumei"]="隐身",
@@ -1509,7 +1509,7 @@ sgs.LoadTranslationTable{
 	["LuaMaboroshi:prevent"]="你可以对 %src 发动技能“幻之铳弹”",
 	["#MaboroshiPrevent"]="防止 %to 受到的【%arg】的伤害",
 	["@death"]="死亡",
-	
+
 	["~DeathGun"]=""
 }
 
@@ -1620,7 +1620,7 @@ Warui = sgs.CreateTriggerSkill{
 							room:doAnimate(1, shinkawa:objectName(), player:objectName())
 							room:notifySkillInvoked(shinkawa,self:objectName())
 							room:broadcastSkillInvoke(self:objectName())
-							
+
 							player:obtainCard(card)
 							room:addPlayerMark(player, "WaruiAdditional")
 						end
@@ -1651,14 +1651,14 @@ ShinkawaKyouni:addSkill(Warui)
 ShinkawaKyouni:addSkill(WaruiAdditional)
 extension:insertRelatedSkills("LuaWarui","#LuaWaruiAdditional")
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["ShinkawaKyouni"]="新川恭二",
 	["&ShinkawaKyouni"]="新川恭二",
 	["#ShinkawaKyouni"]="为虎作伥",
 	["designer:ShinkawaKyouni"]="Smwlover",
 	["cv:ShinkawaKyouni"]="花江夏树",
 	["illustrator:ShinkawaKyouni"]="官方",
-	
+
 	["LuaUrami"]="怀恨",
 	[":LuaUrami"]="<b>（怀恨在心）</b>每当你失去所有手牌后，你可以获得一名手牌数最多的角色的一张手牌。",
 	["@UramiChoose"]="你可以发动技能“怀恨在心”获得一名手牌数最多的角色的一张手牌",
@@ -1666,8 +1666,207 @@ sgs.LoadTranslationTable{
 	["LuaWarui"]="作伥",
 	[":LuaWarui"]="<b>（为虎作伥）</b>每当其他角色于出牌阶段内使用的【杀】结算完毕后，若此【杀】没有造成伤害，你可以将一张牌交给该角色，然后令此阶段内该角色使用【杀】的次数上限+1。",
 	["@WaruiGive"]="你可以发动“为虎作伥”交给 %src 一张手牌",
-	
+
 	["~ShinkawaKyouni"]=""
+}
+
+--SAO-401 Administrator
+Administrator = sgs.General(extension,"Administrator","sao","3",false)
+
+--Fuuin
+Fuuin = sgs.CreateTriggerSkill{
+	name = "LuaFuuin",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.DamageInflicted, sgs.GameStart},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.GameStart then
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:objectName() ~= player:objectName() then
+					room:setPlayerMark(p, "fuuinNum", p:getMark("fuuinNum")+1)
+					if not p:hasSkill("LuaFuuinToppa") then
+						room:attachSkillToPlayer(p,"LuaFuuinToppa")
+					end
+				end
+			end
+		elseif event == sgs.DamageInflicted then
+			local damage = data:toDamage()
+			if damage.from and damage.from:getMark("@fuuinToppa") == 0 then
+				--sendLog:
+				local log = sgs.LogMessage()
+				log.type = "#TamotsuPrevented"
+				log.from = player
+				log.arg = self:objectName()
+				log.arg2 = damage.damage
+				room:sendLog(log)
+				room:notifySkillInvoked(player,self:objectName())
+				room:broadcastSkillInvoke(self:objectName())
+				return true
+			end
+		end
+		return false
+	end
+}
+
+FuuinAttach = sgs.CreateTriggerSkill{
+	name = "#LuaFuuinAttach",
+	events = {sgs.EventAcquireSkill, sgs.EventLoseSkill, sgs.Death},
+	global = true,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventAcquireSkill then
+			local name = data:toString()
+			if name == "LuaFuuin" then
+				for _, p in sgs.qlist(room:getAlivePlayers()) do
+					if p:objectName() ~= player:objectName() then
+						room:setPlayerMark(p, "fuuinNum", p:getMark("fuuinNum")+1)
+						if not p:hasSkill("LuaFuuinToppa") then
+							room:attachSkillToPlayer(p,"LuaFuuinToppa")
+						end
+					end
+				end
+			end
+		elseif event == sgs.EventLoseSkill then
+			local name = data:toString()
+			if name == "LuaFuuin" then
+				for _, p in sgs.qlist(room:getAlivePlayers()) do
+					if p:objectName() ~= player:objectName() then
+						room:setPlayerMark(p, "fuuinNum", p:getMark("fuuinNum")-1)
+						if p:getMark("fuuinNum") == 0 then
+							room:detachSkillFromPlayer(p, "LuaFuuinToppa", true)
+						end
+					end
+				end
+			end
+		elseif event == sgs.Death then
+			local death = data:toDeath()
+			local who = death.who
+			if who:hasSkill("LuaFuuin") and player:objectName() ~= who:objectName() then
+				room:setPlayerMark(player, "fuuinNum", player:getMark("fuuinNum")-1)
+				if player:getMark("fuuinNum") == 0 then
+					room:detachSkillFromPlayer(player, "LuaFuuinToppa", true)
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end
+}
+
+FuuinToppaCard = sgs.CreateSkillCard{
+	name = "FuuinToppaCard",
+	target_fixed = true,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source,"LuaFuuin")
+		room:broadcastSkillInvoke("LuaFuuin")
+		room:loseHp(source)
+		source:gainMark("@fuuinToppa")
+	end
+}
+
+FuuinToppa = sgs.CreateZeroCardViewAsSkill{
+	name = "LuaFuuinToppa",
+	view_as = function()
+		return FuuinToppaCard:clone()
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("@fuuinToppa") == 0
+	end
+}
+
+--Kumiai
+LuaKumiaiCard = sgs.CreateSkillCard{
+	name = "LuaKumiaiCard",
+	target_fixed = false,
+	will_throw = false,
+	handling_method = sgs.Card_MethodPindian,
+	filter = function(self, targets, to_select)
+		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng() and to_select:getMark("@synthesis") == 0
+	end,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source,"LuaKumiai")
+		room:broadcastSkillInvoke("LuaKumiai")
+		local target = targets[1]
+		local success = source:pindian(target, "LuaKumiai")
+		if success then
+			target:gainMark("@synthesis", 1)
+		else
+			room:setPlayerFlag(source, "skipPlay")
+		end
+	end
+}
+
+LuaKumiaiVS = sgs.CreateZeroCardViewAsSkill{
+	name = "LuaKumiai",
+	response_pattern = "@@LuaKumiai",
+	view_as = function(self)
+		return LuaKumiaiCard:clone()
+	end,
+}
+
+Kumiai = sgs.CreateTriggerSkill{
+	name = "LuaKumiai",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseStart},
+	view_as_skill = LuaKumiaiVS,
+	on_trigger = function(self, event, player, data)
+		if player:getPhase() == sgs.Player_Play then
+			local room = player:getRoom()
+			local can_invoke = false
+			local other_players = room:getOtherPlayers(player)
+			for _,p in sgs.qlist(other_players) do
+				if p:getMark("@synthesis") == 0 and not p:isKongcheng() then
+					can_invoke = true
+					break
+				end
+			end
+			if can_invoke and not player:isKongcheng() then
+				room:askForUseCard(player, "@@LuaKumiai", "@LuaKumiai", -1, sgs.Card_MethodPindian)
+			end
+			if player:hasFlag("skipPlay") then
+				return true
+			end
+		end
+		return false
+	end
+}
+
+--Saikou
+
+
+Administrator:addSkill(Fuuin)
+Administrator:addSkill(Kumiai)
+SkillAnJiang:addSkill(FuuinToppa)
+local skill=sgs.Sanguosha:getSkill("#LuaFuuinAttach")
+if not skill then
+	local skillList=sgs.SkillList()
+	skillList:append(FuuinAttach)
+	sgs.Sanguosha:addSkills(skillList)
+end
+
+sgs.LoadTranslationTable{
+	["Administrator"]="奎涅拉",
+	["&Administrator"]="奎涅拉",
+	["#Administrator"]="管理者",
+	["designer:Administrator"]="Smwlover",
+	["illustrator:Administrator"]="官方",
+	["cv:Administrator"]="无",
+
+	["LuaFuuin"]="封印",
+	[":LuaFuuin"]="<b>（右眼的封印）</b><font color=\"blue\"><b>锁定技，</b></font>每当你受到其他角色造成的伤害时，防止此伤害。其他角色于其各自的出牌阶段内，可以失去1点体力，令此技能对该角色无效，直到游戏结束。",
+	["LuaFuuinToppa"]="封印",
+	[":LuaFuuinToppa"]="<b>（封印之突破）</b>出牌阶段，你可以失去1点体力，令<b>“右眼的封印”</b>对你无效，直到游戏结束。",
+	["fuuintoppa"]="封印之突破",
+	["@fuuinToppa"]="突破",
+	["LuaKumiai"]="整合",
+	[":LuaKumiai"]="<b>（整合秘仪）</b>出牌阶段开始时，你可以与一名其他角色拼点。若你赢，该角色成为<b>整合骑士</b>，直到游戏结束；若你没赢，你结束出牌阶段。",
+	["luakumiai"]="整合秘仪",
+	["@LuaKumiai"]="你可以对一名其他角色发动技能“整合秘仪”",
+	["~LuaKumiai"]="选择一名角色→点击“确定”",
+
+	["~Administrator"]=""
 }
 
 --SAO-402 Cardinal
@@ -1699,7 +1898,7 @@ Oshie = sgs.CreateTriggerSkill{
 	can_trigger = function(self, target)
 		return target and target:isAlive()
 	end,
-	on_trigger = function(self, event, player, data) 
+	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.PreCardUsed then
 			if player:getPhase() ~= sgs.Player_NotActive then
@@ -1761,14 +1960,14 @@ Oshie = sgs.CreateTriggerSkill{
 Cardinal:addSkill(Shujin)
 Cardinal:addSkill(Oshie)
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Cardinal"]="卡迪纳尔",
 	["&Cardinal"]="卡迪纳尔",
 	["#Cardinal"]="小贤者",
 	["designer:Cardinal"]="Smwlover",
 	["illustrator:Cardinal"]="官方",
 	["cv:Cardinal"]="无",
-	
+
 	["LuaShujin"]="密室",
 	[":LuaShujin"]="<b>（密室的主人）</b>每当你进入濒死状态时，你可以摸两张牌，然后将武将牌翻面。",
 	["LuaShujin:draw"]="你可以发动技能“密室的主人”",
@@ -1776,7 +1975,7 @@ sgs.LoadTranslationTable{
 	[":LuaOshie"]="<b>（贤者的教诲）</b>一名角色的结束阶段开始时，若此回合内该角色没有使用过锦囊牌，你可以令该角色从弃牌堆中随机获得一张锦囊牌，然后该角色可以使用此牌。",
 	["LuaOshie:draw"]="你可以对 %src 发动技能“贤者的教诲”",
 	["@LuaOshie"]="你可以使用此【%arg】",
-	
+
 	["~Cardinal"]=""
 }
 
@@ -1891,14 +2090,14 @@ Fanatiou:addSkill(Sixuanjian)
 Fanatiou:addSkill(Tianchuanjian)
 Fanatiou:addSkill("#LuaSynthesis")
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Fanatiou"]="法娜提欧",
 	["&Fanatiou"]="法娜提欧",
 	["#Fanatiou"]="铿锵玫瑰",
 	["designer:Fanatiou"]="Smwlover",
 	["illustrator:Fanatiou"]="官方",
 	["cv:Fanatiou"]="无",
-	
+
 	["LuaSixuanjian"]="四旋",
 	[":LuaSixuanjian"]="<b>（四旋剑）</b><font color=\"green\"><b>阶段技，</b></font>你可以弃置一张装备牌并选择一名角色，令攻击范围内含有该角色的所有角色（该角色除外）依次选择一项：对该角色使用一张【杀】（不计入使用次数限制）；或者令你摸一张牌。",
 	["sixuanjian"]="四旋剑",
@@ -1908,10 +2107,10 @@ sgs.LoadTranslationTable{
 	["@tianchuan"]="天穿",
 	["luatianchuanjian"]="天穿剑",
 	["Tianchuan$"]="image=image/animate/Fanatiou.png",
-	
+
 	["~Fanatiou"]=""
 }
-	
+
 --SAO-406 Lynel_Fizel
 Lynel_Fizel = sgs.General(extension,"Lynel_Fizel","sao","5",false)
 
@@ -2038,14 +2237,14 @@ Lynel_Fizel:addSkill(Ikikaeru)
 Lynel_Fizel:addSkill(Akui)
 Lynel_Fizel:addSkill("#LuaSynthesis")
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Lynel_Fizel"]="丽涅尔/菲洁尔",
 	["&Lynel_Fizel"]="双子骑士",
 	["#Lynel_Fizel"]="双子骑士",
 	["designer:Lynel_Fizel"]="Smwlover",
 	["illustrator:Lynel_Fizel"]="官方",
 	["cv:Lynel_Fizel"]="无",
-	
+
 	["LuaKorosu"]="残杀",
 	[":LuaKorosu"]="<b>（自相残杀）</b><font color=\"blue\"><b>锁定技，</b></font>结束阶段开始时，你须展示你的所有手牌，若其中黑色牌与红色牌的数量不相等，你失去1点体力，否则你摸一张牌。",
 	["LuaIkikaeru"]="复生",
@@ -2090,7 +2289,7 @@ Hanaben = sgs.CreateViewAsSkill{
 	end,
 	enabled_at_play = function(self, player)
 		return inSomebodysTurn(player) and not player:hasFlag("HanabenUsed") and not player:isKongcheng() and sgs.Slash_IsAvailable(player)
-	end, 
+	end,
 	enabled_at_response = function(self, player, pattern)
 		return inSomebodysTurn(player) and not player:hasFlag("HanabenUsed") and not player:isKongcheng() and pattern == "slash"
 	end
@@ -2187,20 +2386,20 @@ extension:insertRelatedSkills("LuaHanaben","#LuaHanabenExtra")
 extension:insertRelatedSkills("LuaHanaben","#LuaHanabenFlag")
 extension:insertRelatedSkills("LuaHanaben","#LuaHanabenClear")
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Alice"]="爱丽丝·滋贝鲁库",
 	["&Alice"]="爱丽丝",
 	["#Alice"]="金色的骑士",
 	["designer:Alice"]="Smwlover",
 	["illustrator:Alice"]="官方",
 	["cv:Alice"]="无",
-	
+
 	["LuaKouei"]="荣耀",
 	[":LuaKouei"]="<b>（荣耀之骑士）</b>每当你受到伤害后，你可以摸一张牌，然后展示所有手牌，若花色各不相同，你可以重复此流程。",
 	["LuaKouei:draw"]="你可以发动技能“荣耀之骑士”摸一张牌并展示所有手牌",
 	["LuaHanaben"]="花舞",
 	[":LuaHanaben"]="<b>（繁花之舞）</b>每名角色的回合限一次，你可以将任意数量的花色各不相同的手牌当作【杀】使用，此【杀】的目标数量上限至少为X（X为这些牌的数量）。",
-	
+
 	["~Alice"]=""
 }
 
@@ -2263,19 +2462,19 @@ Hoshishimo = sgs.CreateViewAsSkill{
 Aierduoliye:addSkill(Hoshishimo)
 Aierduoliye:addSkill("#LuaSynthesis")
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Aierduoliye"]="艾尔多利耶",
 	["&Aierduoliye"]="艾尔多利耶",
 	["#Aierduoliye"]="以身为盾",
 	["designer:Aierduoliye"]="Smwlover",
 	["illustrator:Aierduoliye"]="官方",
 	["cv:Aierduoliye"]="无",
-	
+
 	["LuaHoshishimo"]="霜鳞",
 	[":LuaHoshishimo"]="<b>（霜鳞鞭）</b><font color=\"green\"><b>阶段技，</b></font>你可以弃置一张梅花牌，将至多X名角色的武将牌横置（X为你已损失的体力值），若其中有角色的武将牌已横置，改为你令该角色失去1点体力。",
 	["#HoshishimoChain"]="%to 将武将牌横置",
 	["hoshishimo"]="霜鳞鞭",
-	
+
 	["~Aierduoliye"]=""
 }
 
@@ -2404,14 +2603,14 @@ Eugeo:addSkill(Koori)
 Eugeo:addSkill(Saki)
 Eugeo:addSkill("#LuaSynthesis")
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Eugeo"]="尤吉欧",
 	["&Eugeo"]="尤吉欧",
 	["#Eugeo"]="悲情英雄",
 	["designer:Eugeo"]="Smwlover",
 	["illustrator:Eugeo"]="网络资源",
 	["cv:Eugeo"]="无",
-	
+
 	["LuaKoori"]="寒冰",
 	[":LuaKoori"]="<b>（冰之藤蔓）</b>每当你受到伤害后，你可以与一名其他角色拼点。若你赢，该角色摸两张牌并将武将牌翻面；若你没赢，你摸两张牌并将武将牌翻面。",
 	["@LuaKooriChoose"]="你可以发动技能“冰之藤蔓”选择一名角色与其拼点",
@@ -2419,7 +2618,7 @@ sgs.LoadTranslationTable{
 	[":LuaSaki"]="<b>（蔷薇之绽放）</b>出牌阶段，你可以弃置一张非基本牌，令一名武将牌背面朝上的其他角色无法使用或打出手牌，直到回合结束。",
 	["saki"]="蔷薇之绽放",
 	["@kinshi"]="禁止",
-	
+
 	["~Eugeo"]="我的……剑，已经……折断了啊"
 }
 
@@ -2476,7 +2675,7 @@ Itomeru = sgs.CreateZeroCardViewAsSkill{
 Kuzureru = sgs.CreateTriggerSkill{
 	name = "LuaKuzureru",
 	events = {sgs.DamageInflicted},
-	frequency = sgs.Skill_Compulsory, 
+	frequency = sgs.Skill_Compulsory,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local num = player:getMark("@limit_kuzureru")
@@ -2512,14 +2711,14 @@ Kuzureru = sgs.CreateTriggerSkill{
 Vector:addSkill(Itomeru)
 Vector:addSkill(Kuzureru)
 
-sgs.LoadTranslationTable{	
+sgs.LoadTranslationTable{
 	["Vector"]="加百列·米勒",
 	["&Vector"]="加百列",
 	["#Vector"]="暗黑神",
 	["designer:Vector"]="Smwlover",
 	["illustrator:Vector"]="官方",
 	["cv:Vector"]="无",
-	
+
 	["LuaItomeru"]="攫取",
 	[":LuaItomeru"]="<b>（灵魂攫取）</b><font color=\"green\"><b>阶段技，</b></font>你可以选择一名已受伤的其他角色，令该角色减少1点体力上限，然后你增加1点体力上限并回复1点体力。",
 	["itomeru"]="灵魂攫取",

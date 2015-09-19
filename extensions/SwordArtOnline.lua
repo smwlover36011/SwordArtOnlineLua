@@ -2062,7 +2062,7 @@ sgs.LoadTranslationTable{
 	["&Cardinal"]="卡迪纳尔",
 	["#Cardinal"]="小贤者",
 	["designer:Cardinal"]="Smwlover",
-	["illustrator:Cardinal"]="官方",
+	["illustrator:Cardinal"]="Pixiv=52393205",
 	["cv:Cardinal"]="无",
 
 	["LuaShujin"]="密室",
@@ -2209,14 +2209,15 @@ sgs.LoadTranslationTable{
 }
 
 --SAO-406 Lynel_Fizel
-Lynel_Fizel = sgs.General(extension,"Lynel_Fizel","sao","5",false)
+Lynel_Fizel = sgs.General(extension,"Lynel_Fizel","sao","6",false)
 
 --Korosu
-Korosu = sgs.CreatePhaseChangeSkill{
+Korosu = sgs.CreateTriggerSkill{
 	name = "LuaKorosu",
 	frequency = sgs.Skill_Compulsory,
-	on_phasechange = function(self, player)
-		if player:getPhase() == sgs.Player_Finish then
+	events = {sgs.EventPhaseEnd}, 
+	on_trigger = function(self, event, player, data)
+		if player:getPhase() == sgs.Player_Play then
 			local room = player:getRoom()
 			room:sendCompulsoryTriggerLog(player, self:objectName(), true)
 			room:notifySkillInvoked(player,self:objectName())
@@ -2234,9 +2235,7 @@ Korosu = sgs.CreatePhaseChangeSkill{
 				end
 			end
 			--If the number of red and black cards are not equal:
-			if redCount == blackCount then
-				player:drawCards(1)
-			else
+			if redCount ~= blackCount then
 				room:loseHp(player)
 			end
 		end
@@ -2343,7 +2342,7 @@ sgs.LoadTranslationTable{
 	["cv:Lynel_Fizel"]="无",
 
 	["LuaKorosu"]="残杀",
-	[":LuaKorosu"]="<b>（自相残杀）</b><font color=\"blue\"><b>锁定技，</b></font>结束阶段开始时，你须展示你的所有手牌，若其中黑色牌与红色牌的数量不相等，你失去1点体力，否则你摸一张牌。",
+	[":LuaKorosu"]="<b>（自相残杀）</b><font color=\"blue\"><b>锁定技，</b></font>出牌阶段结束时，你须展示你的所有手牌，若其中黑色牌与红色牌的数量不相等，你失去1点体力。",
 	["LuaIkikaeru"]="复生",
 	[":LuaIkikaeru"]="<b>（死而复生）</b>每当你进入濒死状态时，你可以减少1点体力上限，然后将体力值回复至1点。",
 	["LuaIkikaeru:recover"]="你可以发动“死而复生”",
@@ -2488,7 +2487,7 @@ sgs.LoadTranslationTable{
 	["&Alice"]="爱丽丝",
 	["#Alice"]="金色的骑士",
 	["designer:Alice"]="Smwlover",
-	["illustrator:Alice"]="官方",
+	["illustrator:Alice"]="官方，Pixiv=45412753",
 	["cv:Alice"]="无",
 
 	["LuaKouei"]="荣耀",
@@ -2705,7 +2704,7 @@ sgs.LoadTranslationTable{
 	["&Eugeo"]="尤吉欧",
 	["#Eugeo"]="悲情英雄",
 	["designer:Eugeo"]="Smwlover",
-	["illustrator:Eugeo"]="网络资源",
+	["illustrator:Eugeo"]="Pixiv=37178840",
 	["cv:Eugeo"]="无",
 
 	["LuaKoori"]="寒冰",

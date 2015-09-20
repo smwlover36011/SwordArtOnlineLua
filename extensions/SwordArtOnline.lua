@@ -2208,6 +2208,101 @@ sgs.LoadTranslationTable{
 	["~Fanatiou"]=""
 }
 
+--SAO-405 Disuoerbade
+Disuoerbade = sgs.General(extension,"Disuoerbade","sao","4",true)
+
+--Honoo
+Honoo = sgs.CreateOneCardViewAsSkill{
+	name = "LuaHonoo",
+	view_filter = function(self, card)
+		return card:getSuit() == sgs.Card_Heart
+	end,
+	enabled_at_play = function(self, player)
+		return sgs.Slash_IsAvailable(player)
+	end,
+	enabled_at_response = function(self, player, pattern)
+		return sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE and pattern == "slash"
+	end,
+	view_as = function(self, card)
+		local fireSlash = sgs.Sanguosha:cloneCard("fire_slash", card:getSuit(), card:getNumber())
+		fireSlash:addSubcard(card)
+		fireSlash:setSkillName(self:objectName())
+		return fireSlash
+	end
+}
+
+HonooTargetMod = sgs.CreateTargetModSkill{
+	name = "#LuaHonooTargetMod",
+	distance_limit_func = function(self, player, card)
+		if player:hasSkill(self:objectName()) and card:isKindOf("FireSlash") then
+			return 1000
+		else
+			return 0
+		end
+	end,
+	residue_func = function(self, player)
+		if player:hasSkill(self:objectName()) then
+			return player:getMark("HonooAdditional")
+		end
+	end
+}
+
+HonooDamage = sgs.CreateTriggerSkill{
+	name = "#LuaHonooDamage",
+	events = {sgs.PreDamageDone, sgs.EventPhaseChanging},
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.PreDamageDone then
+			local damage = data:toDamage()
+			local from = damage.from
+			if from and from:isAlive() and from:getPhase() == sgs.Player_Play and from:hasSkill(self:objectName()) then
+				if damage.nature == sgs.DamageStruct_Fire then
+					--sendLog:
+					local log = sgs.LogMessage()
+					log.type = "#TriggerSkill"
+					log.from = from
+					log.arg = "LuaHonoo"
+					room:sendLog(log)
+					room:notifySkillInvoked(from,"LuaHonoo")
+					room:broadcastSkillInvoke("LuaHonoo")
+					room:addPlayerMark(from, "HonooAdditional")
+				end
+			end
+		elseif event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.from == sgs.Player_Play then
+				if player:getMark("HonooAdditional") > 0 then
+					room:setPlayerMark(player, "HonooAdditional", 0)
+				end
+			end
+		end
+		return false
+	end
+}
+
+Disuoerbade:addSkill(Honoo)
+Disuoerbade:addSkill(HonooTargetMod)
+Disuoerbade:addSkill(HonooDamage)
+extension:insertRelatedSkills("LuaHonoo","#LuaHonooTargetMod")
+extension:insertRelatedSkills("LuaHonoo","#LuaHonooHonooDamage")
+
+sgs.LoadTranslationTable{
+	["Disuoerbade"]="迪索尔巴德",
+	["&Disuoerbade"]="迪索尔巴德",
+	["#Disuoerbade"]="炽焰之使",
+	["designer:Disuoerbade"]="Smwlover",
+	["illustrator:Disuoerbade"]="刀剑神域OL",
+	["cv:Disuoerbade"]="无",
+
+	["LuaHonoo"]="炽焰",
+	[":LuaHonoo"]="<b>（炽焰弓）</b>你可以将一张红桃牌当作火【杀】使用；你使用的火【杀】无距离限制；每当你于回合内造成1点火焰伤害后，本回合你使用【杀】的次数上限+1。",
+
+	["~Disuoerbade"]=""
+}
+
 --SAO-406 Lynel_Fizel
 Lynel_Fizel = sgs.General(extension,"Lynel_Fizel","sao","6",false)
 
@@ -2215,7 +2310,7 @@ Lynel_Fizel = sgs.General(extension,"Lynel_Fizel","sao","6",false)
 Korosu = sgs.CreateTriggerSkill{
 	name = "LuaKorosu",
 	frequency = sgs.Skill_Compulsory,
-	events = {sgs.EventPhaseEnd}, 
+	events = {sgs.EventPhaseEnd},
 	on_trigger = function(self, event, player, data)
 		if player:getPhase() == sgs.Player_Play then
 			local room = player:getRoom()

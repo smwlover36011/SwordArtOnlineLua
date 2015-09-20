@@ -2283,9 +2283,61 @@ HonooDamage = sgs.CreateTriggerSkill{
 	end
 }
 
+--Shougeki
+ShougekiCard = sgs.CreateSkillCard{
+	name = "LuaShougeki",
+	target_fixed = false,
+	filter = function(self, targets, to_select, player)
+		if #targets == 0 then
+			return true
+		elseif #targets == 1 then
+			return to_select:isAdjacentTo(targets[1])
+		elseif #targets == 2 then
+			return to_select:isAdjacentTo(targets[1]) or to_select:isAdjacentTo(targets[2])
+		else
+			return false
+		end
+	end,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source, "LuaShougeki")
+		room:broadcastSkillInvoke("LuaShougeki")
+		room:doLightbox("Shougeki$", 2500)
+		source:loseMark("@shougeki")
+		--Discard all equipments and deal damage:
+		source:throwAllEquips()
+		for i=1, #targets, 1 do
+			room:damage(sgs.DamageStruct("LuaShougeki", source, targets[i], 1, sgs.DamageStruct_Fire))
+		end
+	end
+}
+
+LuaShougekiVS = sgs.CreateViewAsSkill{
+	name = "LuaShougeki",
+	n = 0,
+	view_as = function(self, cards)
+		local card = ShougekiCard:clone()
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("@shougeki") >= 1 and player:getEquips():length() >= 3
+	end
+}
+
+Shougeki = sgs.CreateTriggerSkill{
+	name = "LuaShougeki" ,
+	frequency = sgs.Skill_Limited,
+	limit_mark = "@shougeki",
+	events = {},
+	view_as_skill = LuaShougekiVS,
+	on_trigger = function()
+		return false
+	end
+}
+
 Disuoerbade:addSkill(Honoo)
 Disuoerbade:addSkill(HonooTargetMod)
 Disuoerbade:addSkill(HonooDamage)
+Disuoerbade:addSkill(Shougeki)
 extension:insertRelatedSkills("LuaHonoo","#LuaHonooTargetMod")
 extension:insertRelatedSkills("LuaHonoo","#LuaHonooHonooDamage")
 
@@ -2298,7 +2350,12 @@ sgs.LoadTranslationTable{
 	["cv:Disuoerbade"]="无",
 
 	["LuaHonoo"]="炽焰",
-	[":LuaHonoo"]="<b>（炽焰弓）</b>你可以将一张红桃牌当作火【杀】使用；你使用的火【杀】无距离限制；每当你于回合内造成1点火焰伤害后，本回合你使用【杀】的次数上限+1。",
+	[":LuaHonoo"]="<b>（炽焰弓）</b>你可以将一张红桃牌当作火【杀】使用；你使用的火【杀】无距离限制；每当你于回合内造成火焰伤害后，本回合你使用【杀】的次数上限+1。",
+	["LuaShougeki"]="冲击",
+	[":LuaShougeki"]="<b>（烈焰冲击）</b><font color=\"red\"><b>限定技，</b></font>出牌阶段，若你装备区中牌的数量不小于三张，你可以弃置装备区中的所有牌，对至多三名相邻的角色各造成1点火焰伤害。",
+	["luashougeki"]="烈焰冲击",
+	["@shougeki"]="冲击",
+	["Shougeki$"]="image=image/animate/Disuoerbade.png",
 
 	["~Disuoerbade"]=""
 }

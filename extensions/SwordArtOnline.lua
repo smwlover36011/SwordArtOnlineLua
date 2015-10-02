@@ -2210,6 +2210,7 @@ Shini = sgs.CreateTriggerSkill{
 
 Beierkuli:addSkill(Tsuranuku)
 Beierkuli:addSkill(Shini)
+Beierkuli:addSkill("#LuaSynthesis")
 
 sgs.LoadTranslationTable{
 	["Beierkuli"]="贝尔库利",
@@ -2497,6 +2498,7 @@ Disuoerbade:addSkill(Honoo)
 Disuoerbade:addSkill(HonooTargetMod)
 Disuoerbade:addSkill(HonooDamage)
 Disuoerbade:addSkill(Shougeki)
+Disuoerbade:addSkill("LuaSynthesis")
 extension:insertRelatedSkills("LuaHonoo","#LuaHonooTargetMod")
 extension:insertRelatedSkills("LuaHonoo","#LuaHonooHonooDamage")
 

@@ -2148,16 +2148,10 @@ Tsuranuku = sgs.CreatePhaseChangeSkill{
 				judge.reason = self:objectName()
 				judge.who = player
 				room:judge(judge)
-				if judge:isBad() and beierkuli:canSlash(player, nil, false) then
+				--Generate slash:
+				local slash = sgs.Sanguosha:cloneCard(card:objectName(), card:getSuit(), card:getNumber())
+				if judge:isBad() and beierkuli:canSlash(player, slash, false) then
 					--Use slash to player:
-					local slash
-					if card:isKindOf("FireSlash") then
-						slash = sgs.Sanguosha:cloneCard("fire_slash", card:getSuit(), card:getNumber())
-					elseif card:isKindOf("ThunderSlash") then
-						slash = sgs.Sanguosha:cloneCard("thunder_slash", card:getSuit(), card:getNumber())
-					else
-						slash = sgs.Sanguosha:cloneCard("slash", card:getSuit(), card:getNumber())
-					end
 					slash:setSkillName("LuaTsuranuku")
 					local card_use = sgs.CardUseStruct()
 					card_use.card = slash

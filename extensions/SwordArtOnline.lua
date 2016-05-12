@@ -11,6 +11,7 @@ do
 	table.insert(kingdoms,"sao")
 	config.color_de = "#FF00FF"
 end
+
 sgs.LoadTranslationTable{
 	["sao"] = "剑",
 	["swordartonline"] = "刀剑神域",

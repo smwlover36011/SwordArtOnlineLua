@@ -2801,7 +2801,7 @@ sgs.LoadTranslationTable{
 	["&Alice"]="爱丽丝",
 	["#Alice"]="金色的骑士",
 	["designer:Alice"]="Smwlover",
-	["illustrator:Alice"]="官方，Pixiv=45412753",
+	["illustrator:Alice"]="Pixiv=45412753",
 	["cv:Alice"]="无",
 
 	["LuaKouei"]="荣耀",

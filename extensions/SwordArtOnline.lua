@@ -1,7 +1,7 @@
 --By smwlover at JUL/2015.
 --Sword Art Online Project for QSanguosha.
 module("extensions.swordartonline",package.seeall)
-extension=sgs.Package("swordartonline")
+extension = sgs.Package("swordartonline")
 
 --增加SAO势力
 do

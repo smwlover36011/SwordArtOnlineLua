@@ -1103,3 +1103,151 @@ sgs.LoadTranslationTable{
 
 	["~Eugeo"]="我的……剑，已经……折断了啊"
 }
+
+--SAO-410 Vector
+Vector = sgs.General(extension,"Vector","sao","4",true)
+
+--Itomeru
+ItomeruCard = sgs.CreateSkillCard{
+	name = "ItomeruCard",
+	target_fixed = false,
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and to_select:isWounded()
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source,"LuaItomeru")
+		room:broadcastSkillInvoke("LuaItomeru")
+		room:loseMaxHp(targets[1])
+		room:setPlayerProperty(source, "maxhp", sgs.QVariant(source:getMaxHp()+1));
+		--sendLog:
+		local log = sgs.LogMessage()
+		log.type = "#GainMaxHp"
+		log.from = source
+		log.arg = "1"
+		room:sendLog(log)
+		--recover or draw:
+		local choice = room:askForChoice(source, "LuaItomeru", "draw2+recover1")
+		if choice == "draw2" then
+			source:drawCards(2)
+		else
+			room:recover(source, sgs.RecoverStruct(source))
+		end
+		--getMark:
+		room:setPlayerMark(source, "@limit_kuzureru", source:getMark("@limit_kuzureru")+1)
+		room:setPlayerMark(targets[1], "@kuzureru", targets[1]:getMark("@kuzureru")+1)
+	end
+}
+
+Itomeru = sgs.CreateZeroCardViewAsSkill{
+	name = "LuaItomeru",
+	view_as = function()
+		return ItomeruCard:clone()
+	end,
+	enabled_at_play = function(self, player)
+		--Is there any wounded player?
+		local enabled = false
+		for _, p in sgs.qlist(player:getAliveSiblings()) do
+			if p:isWounded() then
+				enabled = true
+				break
+			end
+		end
+		return enabled and not player:hasUsed("#ItomeruCard")
+	end
+}
+
+--Kuzureru
+Kuzureru = sgs.CreateTriggerSkill{
+	name = "LuaKuzureru",
+	events = {sgs.DamageInflicted, sgs.Death},
+	frequency = sgs.Skill_Compulsory,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.DamageInflicted and player:isAlive() then
+			local num = player:getMark("@limit_kuzureru")
+			local damage = data:toDamage()
+			if num > 0 then
+				room:sendCompulsoryTriggerLog(player, self:objectName(), true)
+				room:notifySkillInvoked(player,self:objectName())
+				room:broadcastSkillInvoke(self:objectName())
+				--Judge:
+				for i=1, num, 1 do
+					local judge = sgs.JudgeStruct()
+					judge.pattern = ".|spade"
+					judge.good = false
+					judge.reason = self:objectName()
+					judge.who = player
+					room:judge(judge)
+					if not judge:isGood() then
+						local log = sgs.LogMessage()
+						log.type = "#KuzureruIncrease"
+						log.to:append(player)
+						log.arg = damage.damage
+						log.arg2 = damage.damage + 1
+						room:sendLog(log)
+						damage.damage = damage.damage + 1
+					end
+				end
+				data:setValue(damage)
+			end
+		elseif event == sgs.Death then
+			local death = data:toDeath()
+			if death.who:objectName() ~= player:objectName() then
+				return false
+			end
+			room:sendCompulsoryTriggerLog(player, self:objectName(), true)
+			room:notifySkillInvoked(player,self:objectName())
+			room:broadcastSkillInvoke(self:objectName())
+			local list = room:getOtherPlayers(player)
+			for _,tar in sgs.qlist(list) do
+				if tar:isAlive() and tar:getMark("@kuzureru") > 0 then
+					--Add max hp.
+					room:setPlayerProperty(tar, "maxhp", sgs.QVariant(tar:getMaxHp()+tar:getMark("@kuzureru")));
+					local log = sgs.LogMessage()
+					log.type = "#GainMaxHp"
+					log.from = tar
+					log.arg = tar:getMark("@kuzureru")
+					room:sendLog(log)
+					--Recover
+					local recover = sgs.RecoverStruct()
+					recover.recover = tar:getMark("@kuzureru")
+					room:recover(tar, recover)
+					
+					room:setPlayerMark(tar, "@kuzureru", 0)
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:hasSkill(self:objectName())
+	end
+}
+
+Vector:addSkill(Itomeru)
+Vector:addSkill(Kuzureru)
+
+sgs.LoadTranslationTable{
+	["Vector"]="加百列·米勒",
+	["&Vector"]="加百列",
+	["#Vector"]="暗黑神",
+	["designer:Vector"]="Smwlover",
+	["illustrator:Vector"]="官方",
+	["cv:Vector"]="无",
+
+	["LuaItomeru"]="攫取",
+	[":LuaItomeru"]="<b>（灵魂攫取）</b><font color=\"green\"><b>阶段技，</b></font>你可以选择一名已受伤的其他角色，令该角色减少1点体力上限，然后你增加1点体力上限并回复1点体力。",
+	["itomeru"]="灵魂攫取",
+	["LuaKuzureru"]="崩坏",
+	[":LuaKuzureru"]="<b>（灵魂崩坏）</b><font color=\"blue\"><b>锁定技，</b></font>每当你受到伤害时，你须进行X次判定（X为本局游戏中你发动“灵魂攫取”的次数），其中每有一次判定的判定结果为黑桃，此伤害便+1。你死亡时，其他角色依次增加其因“灵魂攫取”而减少的体力上限，并回复等量的体力。",
+	["@limit_kuzureru"]="发动次数",
+	["@kuzureru"]="攫取",
+	["draw2"]="摸两张牌",
+	["recover1"]="回复1点体力",
+	["#KuzureruIncrease"]="%to 受到的伤害由 %arg 增加至 %arg2 点",
+
+	["~Vector"]=""
+}

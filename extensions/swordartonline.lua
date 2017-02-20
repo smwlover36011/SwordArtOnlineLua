@@ -117,6 +117,118 @@ sgs.LoadTranslationTable{
 	["~Silica"]=""
 }
 
+--SAO-402 Cardinal
+Cardinal = sgs.General(extension,"Cardinal","sao","3",false)
+
+--Shujin
+Shujin = sgs.CreateTriggerSkill{
+	name = "LuaShujin",
+	events = {sgs.Dying},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local dying = data:toDying()
+		local who = dying.who
+		if who:objectName() ~= player:objectName() then
+			return false
+		end
+		if player:askForSkillInvoke(self:objectName(), sgs.QVariant("draw")) then
+			player:turnOver()
+			if not player:faceUp() then
+				player:drawCards(3)
+			end
+		end
+		return false
+	end
+}
+
+--Oshie
+Oshie = sgs.CreateTriggerSkill{
+	name = "LuaOshie",
+	events = {sgs.EventPhaseChanging, sgs.EventPhaseStart, sgs.PreCardUsed},
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.PreCardUsed then
+			if player:getPhase() ~= sgs.Player_NotActive then
+				local card = data:toCardUse().card
+				if card and card:isKindOf("TrickCard") then
+					room:setPlayerFlag(player, "TrickUsed")
+				end
+			end
+		elseif event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive then
+				room:setPlayerFlag(player, "-TrickUsed")
+			end
+		elseif event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Finish then
+				if not player:hasFlag("TrickUsed") then
+					--Find Cardinal:
+					local cardinal = room:findPlayerBySkillName(self:objectName())
+					if not cardinal or not cardinal:isAlive() then
+						return false
+					end
+					if cardinal:askForSkillInvoke(self:objectName(), sgs.QVariant("draw:"..player:objectName())) then
+						--Get a random trick card from the discard pile:
+						local discardPile = room:getDiscardPile()
+						local trickList = sgs.IntList()
+						for _,id in sgs.qlist(discardPile) do
+							local card = sgs.Sanguosha:getCard(id)
+							if card:isKindOf("TrickCard") then
+								trickList:append(id)
+							end
+						end
+						if trickList:isEmpty() then
+							return false
+						end
+						local randomNum = math.random(0, trickList:length()-1)
+						local chosenID = trickList:at(randomNum)
+						local chosenCard = sgs.Sanguosha:getCard(chosenID)
+						local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+						dummy:addSubcard(chosenID)
+						player:obtainCard(dummy)
+						--Player can use this card immediately:
+						if chosenCard:objectName() ~= "nullification" then
+							room:askForUseCard(player, chosenID, "@LuaOshie:::"..chosenCard:objectName(), -1, sgs.Card_MethodUse)
+						end
+						--[[
+						About the function "askForUseCard":
+						const Card *askForUseCard(ServerPlayer *player, const char *pattern, const char *prompt, int notice_index = -1, Card::HandlingMethod method = Card::MethodUse, bool addHistory = true);
+						About the variable "pattern":
+						Please refer to src/package/exppattern.cpp.
+						]]
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+
+Cardinal:addSkill(Shujin)
+Cardinal:addSkill(Oshie)
+
+sgs.LoadTranslationTable{
+	["Cardinal"]="卡迪纳尔",
+	["&Cardinal"]="卡迪纳尔",
+	["#Cardinal"]="小贤者",
+	["designer:Cardinal"]="Smwlover",
+	["illustrator:Cardinal"]="Pixiv=52393205",
+	["cv:Cardinal"]="无",
+
+	["LuaShujin"]="密室",
+	[":LuaShujin"]="<b>（密室的主人）</b>每当你进入濒死状态时，你可以将武将牌翻面，然后若你的武将牌背面朝上，你摸三张牌。",
+	["LuaShujin:draw"]="你可以发动技能“密室的主人”",
+	["LuaOshie"]="教诲",
+	[":LuaOshie"]="<b>（贤者的教诲）</b>一名角色的结束阶段开始时，若此回合内该角色没有使用过锦囊牌，你可以令该角色从弃牌堆中随机获得一张锦囊牌，然后该角色可以使用此牌。",
+	["LuaOshie:draw"]="你可以对 %src 发动技能“贤者的教诲”",
+	["@LuaOshie"]="你可以使用此【%arg】",
+
+	["~Cardinal"]=""
+}
+
 --SAO-404 Fanatiou
 Fanatiou = sgs.General(extension,"Fanatiou","sao","4",false)
 
@@ -402,6 +514,151 @@ sgs.LoadTranslationTable{
 	["Shougeki$"]="image=image/animate/Disuoerbade.png",
 
 	["~Disuoerbade"]=""
+}
+
+--SAO-406 Lynel_Fizel
+Lynel_Fizel = sgs.General(extension,"Lynel_Fizel","sao","6",false)
+
+--Korosu
+Korosu = sgs.CreateTriggerSkill{
+	name = "LuaKorosu",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.EventPhaseStart},
+	on_trigger = function(self, event, player, data)
+		if player:getPhase() == sgs.Player_Discard then
+			local room = player:getRoom()
+			room:sendCompulsoryTriggerLog(player, self:objectName(), true)
+			room:notifySkillInvoked(player,self:objectName())
+			room:broadcastSkillInvoke(self:objectName())
+			--showAllCards:
+			room:showAllCards(player)
+			local cards = player:getHandcards()
+			local blackCount = 0
+			local redCount = 0
+			for _, card in sgs.qlist(cards) do
+				if card:isRed() then
+					redCount = redCount + 1
+				else
+					blackCount = blackCount + 1
+				end
+			end
+			--If the number of red and black cards are not equal:
+			if redCount ~= blackCount then
+				room:loseHp(player)
+			end
+		end
+		return false
+	end
+}
+
+--Ikikaeru
+Ikikaeru = sgs.CreateTriggerSkill{
+	name = "LuaIkikaeru",
+	events = {sgs.Dying},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local dying = data:toDying()
+		local who = dying.who
+		if who:objectName() ~= player:objectName() then
+			return false
+		end
+		if player:askForSkillInvoke(self:objectName(), sgs.QVariant("recover")) then
+			room:loseMaxHp(player)
+			room:recover(player, sgs.RecoverStruct(player, nil, player:getMaxHp() - player:getHp()))
+			room:setPlayerMark(player, "@limit_akui", player:getMark("@limit_akui")+1)
+		end
+		return false
+	end
+}
+
+--Akui
+function isAvailable(player, to_select)
+	if player:objectName() == to_select:objectName() then
+		local cards = player:getHandcards()
+		for _, card in sgs.qlist(cards) do
+			if not player:isJilei(card) then
+				return true
+			end
+		end
+		return false
+	end
+	return true
+end
+
+AkuiCard = sgs.CreateSkillCard{
+	name = "AkuiCard",
+	target_fixed = false,
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and not to_select:isKongcheng() and player:canDiscard(to_select, "h") and isAvailable(player, to_select)
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source,"LuaAkui")
+		room:broadcastSkillInvoke("LuaAkui")
+		room:setPlayerMark(source, "times", source:getMark("times")+1)
+		if targets[1]:objectName() == source:objectName() then
+			room:askForDiscard(source, "LuaAkui", 1, 1, false, false) --Optional, include_equip
+		else
+			local card_id = room:askForCardChosen(source, targets[1], "h", "LuaAkui", false, sgs.Card_MethodDiscard)
+			local card = sgs.Sanguosha:getCard(card_id)
+			if not targets[1]:isJilei(card) then
+				room:throwCard(card_id, targets[1], source)
+			else
+				room:showCard(targets[1], card_id)
+			end
+		end
+	end
+}
+
+LuaAkuiVS = sgs.CreateZeroCardViewAsSkill{
+	name = "LuaAkui",
+	view_as = function()
+		return AkuiCard:clone()
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("times") < player:getMark("@limit_akui")
+	end
+}
+
+Akui = sgs.CreateTriggerSkill{
+	name = "LuaAkui",
+	events = {sgs.EventPhaseChanging},
+	view_as_skill = LuaAkuiVS,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local change = data:toPhaseChange()
+		if change.to ~= sgs.Player_NotActive then
+			room:setPlayerMark(player, "times", 0)
+		end
+		return false
+	end
+}
+
+Lynel_Fizel:addSkill(Korosu)
+Lynel_Fizel:addSkill(Ikikaeru)
+Lynel_Fizel:addSkill(Akui)
+
+sgs.LoadTranslationTable{
+	["Lynel_Fizel"]="丽涅尔/菲洁尔",
+	["&Lynel_Fizel"]="双子骑士",
+	["#Lynel_Fizel"]="双子骑士",
+	["designer:Lynel_Fizel"]="Smwlover",
+	["illustrator:Lynel_Fizel"]="官方",
+	["cv:Lynel_Fizel"]="无",
+
+	["LuaKorosu"]="残杀",
+	[":LuaKorosu"]="<b>（自相残杀）</b><font color=\"blue\"><b>锁定技，</b></font>弃牌阶段开始时，你须展示你的所有手牌，若其中黑色牌与红色牌的数量不相等，你失去1点体力。",
+	["LuaIkikaeru"]="复生",
+	[":LuaIkikaeru"]="<b>（死而复生）</b>每当你进入濒死状态时，你可以减少1点体力上限，然后将体力值回复至体力上限。",
+	["LuaIkikaeru:recover"]="你可以发动“死而复生”",
+	["@limit_akui"]="发动次数",
+	["LuaAkui"]="恶意",
+	[":LuaAkui"]="<b>（幼小的恶意）</b>出牌阶段，你可以弃置一名角色的一张手牌，每阶段限X次（X为本局游戏中你发动“死而复生”的次数）。",
+	["akui"]="幼小的恶意",
+
+	["~Lynel_Fizel"]=""
 }
 
 --SAO-407 Alice
@@ -775,7 +1032,15 @@ LuaSakiVS = sgs.CreateViewAsSkill{
 		return nil
 	end,
 	enabled_at_play = function(self, player)
-		return player:canDiscard(player, "he") and not player:isNude()
+		if player:getMark("LuaSaki") == 14 then
+			return false
+		end
+		for _, p in sgs.qlist(player:getAliveSiblings()) do
+            if (not p:faceUp()) and (p:getMark("@kinshi") == 0) then
+				return player:canDiscard(player, "he") and not player:isNude()
+			end
+		end
+		return false
 	end
 }
 

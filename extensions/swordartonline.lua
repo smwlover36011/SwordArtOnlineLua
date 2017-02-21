@@ -229,6 +229,217 @@ sgs.LoadTranslationTable{
 	["~Cardinal"]=""
 }
 
+--SAO-403 Beierkuli
+Beierkuli = sgs.General(extension,"Beierkuli","sao","4",true)
+
+--Tsuranuku
+TsuranukuCard = sgs.CreateSkillCard{
+	name = "LuaTsuranuku",
+	will_throw = false,
+	handling_method = sgs.Card_MethodNone,
+	target_fixed = true,
+	on_use = function(self, room, source)
+		room:notifySkillInvoked(source,"LuaTsuranuku")
+		room:broadcastSkillInvoke("LuaTsuranuku")
+		source:addToPile("yaiba", self)
+	end
+}
+
+TsuranukuVS = sgs.CreateViewAsSkill{
+	name = "LuaTsuranuku",
+	n = 4,
+	response_pattern = "@@LuaTsuranuku",
+	view_filter = function(self, selected, to_select)
+		local available = true
+		for _,p in pairs(selected) do
+			if p:sameColorWith(to_select) then
+				available = false
+			end
+		end
+		return available and to_select:isKindOf("Slash")
+	end,
+	view_as = function(self, cards)
+		if #cards == 0 then
+			return nil
+		else
+			local tsuranukuCard = TsuranukuCard:clone()
+			tsuranukuCard:setSkillName(self:objectName())
+			for _,c in ipairs(cards) do
+				tsuranukuCard:addSubcard(c)
+			end
+			return tsuranukuCard
+		end
+	end
+}
+
+Tsuranuku = sgs.CreatePhaseChangeSkill{
+	name = "LuaTsuranuku",
+	view_as_skill = TsuranukuVS,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end,
+	on_phasechange = function(self, player)
+		local room = player:getRoom()
+		if player:hasSkill(self:objectName()) and player:getPhase() == sgs.Player_Finish then
+			--Does player have slash in his hand?
+			local canTrigger = false
+			local cards = player:getHandcards()
+			for _, card in sgs.qlist(cards) do
+				if card:isKindOf("Slash") then
+					canTrigger = true
+					break
+				end
+			end
+			if canTrigger then
+				room:askForUseCard(player, "@@LuaTsuranuku", "@LuaTsuranuku")
+			end
+		elseif player:hasSkill(self:objectName()) and player:getPhase() == sgs.Player_RoundStart and player:getPile("yaiba"):length() > 0 then
+			room:sendCompulsoryTriggerLog(player, self:objectName(), true)
+			--Create a dummy card:
+			local dummy = sgs.Sanguosha:cloneCard("jink")
+			local ids = player:getPile("yaiba")
+			for _, card_id in sgs.qlist(ids) do
+				dummy:addSubcard(card_id);
+			end
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", self:objectName(), "")
+			room:throwCard(dummy, reason, nil)
+		elseif player:getPhase() == sgs.Player_RoundStart then
+			--Find Beierkuli:
+			local beierkuli = room:findPlayerBySkillName(self:objectName())
+			if not beierkuli or not beierkuli:isAlive() or beierkuli:getPile("yaiba"):length() == 0 then
+				return false
+			end
+			if beierkuli:askForSkillInvoke(self:objectName(), sgs.QVariant("slash:"..player:objectName())) then
+				local ids = beierkuli:getPile("yaiba")
+				local hasRed = false
+				local hasBlack = false
+				for _, card_id in sgs.qlist(ids) do
+					if sgs.Sanguosha:getCard(card_id):isRed() then
+						hasRed = true
+					else
+						hasBlack = true
+					end
+				end
+				local pattern
+				if hasRed and hasBlack then
+					pattern = ".|."
+				elseif hasRed then
+					pattern = ".|red"
+				else
+					pattern = ".|black"
+				end
+				--Judge:
+				local judge = sgs.JudgeStruct()
+				judge.pattern = pattern
+				judge.good = true
+				judge.reason = self:objectName()
+				judge.who = player
+				room:judge(judge)
+				--If success, generate slash:
+				if judge:isGood() then
+					local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+					if beierkuli:canSlash(player, slash, false) then
+						--Use slash to player:
+						slash:setSkillName("LuaTsuranuku")
+						local card_use = sgs.CardUseStruct()
+						card_use.card = slash
+						card_use.from = beierkuli
+						card_use.to:append(player)
+						room:useCard(card_use, false)
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+
+TsuranukuLose = sgs.CreateTriggerSkill{
+	name = "#LuaTsuranukuLose",
+	events = {sgs.EventLoseSkill},
+	on_trigger = function(self, event, player, data)
+		if data:toString() == "LuaTsuranuku" then
+			player:removePileByName("yaiba")
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive() and target:getPile("yaiba"):length() > 0
+	end
+}
+
+--Shini
+ShiniCard = sgs.CreateSkillCard{
+	name = "ShiniCard",
+	target_fixed = false,
+	filter = function(self, targets, to_select)
+		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and sgs.Self:inMyAttackRange(to_select)
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		room:notifySkillInvoked(source, "LuaShini")
+		room:broadcastSkillInvoke("LuaShini")
+		room:doLightbox("Shini$", 2500)
+		source:loseMark("@shini")
+		room:damage(sgs.DamageStruct("LuaShini", source, targets[1], 2))
+		room:killPlayer(source)
+	end,
+}
+
+LuaShiniVS = sgs.CreateViewAsSkill{
+	name = "LuaShini",
+	n = 0,
+	view_as = function(self, cards)
+		local card = ShiniCard:clone()
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("@shini") >= 1
+	end
+}
+
+Shini = sgs.CreateTriggerSkill{
+	name = "LuaShini",
+	frequency = sgs.Skill_Limited,
+	limit_mark = "@shini",
+	events = {},
+	view_as_skill = LuaShiniVS,
+	on_trigger = function()
+		return false
+	end
+}
+
+Beierkuli:addSkill(Tsuranuku)
+Beierkuli:addSkill(TsuranukuLose)
+Beierkuli:addSkill(Shini)
+extension:insertRelatedSkills("LuaTsuranuku","#LuaTsuranukuLose")
+
+sgs.LoadTranslationTable{
+	["Beierkuli"]="贝尔库利",
+	["&Beierkuli"]="贝尔库利",
+	["#Beierkuli"]="传说的英雄",
+	["designer:Beierkuli"]="Smwlover",
+	["illustrator:Beierkuli"]="Pixiv=49578000",
+	["cv:Beierkuli"]="无",
+
+	["LuaTsuranuku"]="时穿",
+	[":LuaTsuranuku"]="<b>（时穿剑）</b>结束阶段开始时，你可以将任意数量的颜色各不相同的【杀】置于武将牌上，称为“刃”；准备阶段开始时，将所有“刃”置入弃牌堆。其他角色的准备阶段开始时，若你有“刃”，你可以令该角色进行一次判定，若判定结果与其中一张“刃”颜色相同，视为你对该角色使用了一张【杀】。",
+	["luatsuranuku"]="时穿剑",
+	["yaiba"]="刃",
+	["LuaTsuranuku:slash"]="你可以对 %src 发动技能“时穿剑”",
+	["@LuaTsuranuku"]="你可以发动技能“时穿剑”将【杀】置于武将牌上",
+	["~LuaTsuranuku"]="选中花色各不相同的【杀】→点“确定”",
+	["LuaShini"]="心意",
+	[":LuaShini"]="<b>（心意之一击）</b><font color=\"red\"><b>限定技，</b></font>出牌阶段，你可以对攻击范围内的一名其他角色造成2点伤害，然后你立即死亡。",
+	["@shini"]="心意",
+	["shini"]="心意之一击",
+	["Shini$"]="image=image/animate/Beierkuli.png",
+
+	["~Beierkuli"]=""
+}
+
 --SAO-404 Fanatiou
 Fanatiou = sgs.General(extension,"Fanatiou","sao","4",false)
 

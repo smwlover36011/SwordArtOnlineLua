@@ -517,7 +517,7 @@ sgs.LoadTranslationTable{
 }
 
 --SAO-406 Lynel_Fizel
-Lynel_Fizel = sgs.General(extension,"Lynel_Fizel","sao","6",false)
+Lynel_Fizel = sgs.General(extension,"Lynel_Fizel","sao","5",false)
 
 --Korosu
 Korosu = sgs.CreateTriggerSkill{
